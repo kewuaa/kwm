@@ -72,6 +72,7 @@ pub const working_directory: union(enum) {
 
 pub const startup_cmds = [_][]const []const u8 {
     &[_][]const u8 { "sh", "-c", "$HOME/.local/bin/swaybgd" },
+    &[_][]const u8{ "foot", "--server" },
 };
 
 pub const xcursor_theme: ?XcursorTheme = null;
