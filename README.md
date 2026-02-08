@@ -42,7 +42,7 @@ You can use `-Dconfig` to specify custom config file path, `-Dbar` to enable/dis
 ## configuration
 
 Make your custom modifications in `config.zig`.
-(Initial implementation of support for loading user configurations at runtime, see branch `config-file`. It will be merged into `master` branch soon.)
+(Implementation of support for loading user configurations at runtime already merged to `master` branch)
 
 ## usage
 
