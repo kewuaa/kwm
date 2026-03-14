@@ -190,6 +190,14 @@ pub fn set_tag(self: *Self, tag: u32) void {
         self.main_tag = tag ^ (tag & (tag-1));
 
         log.debug("<{*}> update main tag to {b}", .{ self, self.main_tag });
+
+        const context = Context.get();
+        {
+            var it = context.seats.safeIterator(.forward);
+            while (it.next()) |seat| {
+                seat.previous_focused = .{ .output = self };
+            }
+        }
     }
 
     if (comptime build_options.bar_enabled) self.bar.damage(.tags);
