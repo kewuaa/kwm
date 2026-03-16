@@ -18,7 +18,7 @@ pub fn arrange(self: *const Self, output: *Output) void {
 
     const context = Context.get();
 
-    const focus_top = context.focus_top_in(output, true) orelse return;
+    const focus_top = context.focus_top_in(output, true, false) orelse return;
 
     const available_width = output.exclusive_width();
     const available_height = output.exclusive_height();

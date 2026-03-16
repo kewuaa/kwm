@@ -24,6 +24,7 @@ pub const Action = union(enum) {
     focus_iter: struct {
         direction: types.Direction,
         skip_floating: bool = false,
+        skip_tiled: bool = false,
     },
     focus_output_iter: struct {
         direction: types.Direction,

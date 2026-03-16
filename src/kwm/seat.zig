@@ -458,7 +458,7 @@ fn handle_actions(self: *Self) void {
                 context.switch_mode(data.mode);
             },
             .focus_iter => |data| {
-                context.focus_iter(data.direction, data.skip_floating);
+                context.focus_iter(data.direction, data.skip_floating, data.skip_tiled);
             },
             .focus_output_iter => |data| {
                 context.focus_output_iter(data.direction);
@@ -534,7 +534,7 @@ fn handle_actions(self: *Self) void {
 
                                 var master = output.master_window() orelse return;
                                 var new_master = if (window != master) window
-                                    else context.focused_before(window, true) orelse return;
+                                    else context.focused_before(window, true, false) orelse return;
 
                                 // ensure the old master immediately behind the new master in focus_stack
                                 context.focus(master);
@@ -558,7 +558,7 @@ fn handle_actions(self: *Self) void {
                                 const master = output.master_window() orelse return;
                                 context.focus(
                                     if (window != master) master
-                                    else context.focused_before(window, true) orelse return,
+                                    else context.focused_before(window, true, false) orelse return,
                                 );
                             },
                             else => {}
@@ -601,7 +601,7 @@ fn handle_actions(self: *Self) void {
                 if (context.current_output) |output| {
                     switch (output.current_layout()) {
                         .tile => config.layout.tile.mfact = @min(1, @max(0, config.layout.tile.mfact+data.step)),
-                        .scroller => if (context.focus_top_in(output, false)) |window| {
+                        .scroller => if (context.focus_top_in(output, false, false)) |window| {
                             window.scroller_mfact = @min(1, @max(0, window.scroller_mfact+data.step));
                         },
                         else => {},

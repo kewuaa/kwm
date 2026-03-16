@@ -544,7 +544,7 @@ fn render_dynamic_component(self: *Self) void {
     self.dynamic_splits.appendBounded(x) catch unreachable;
 
     const title_start = x;
-    if (context.focus_top_in(self.output, false)) |window| {
+    if (context.focus_top_in(self.output, false, false)) |window| {
         if (self.output == context.current_output) {
             bg_rect[0].x = x;
             bg_rect[0].width = w - @as(u16, @intCast(x));

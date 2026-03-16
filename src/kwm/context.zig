@@ -453,7 +453,7 @@ pub fn focused_window(self: *Self) ?*Window {
 }
 
 
-pub fn focus_iter(self: *Self, direction: types.Direction, skip_floating: bool) void {
+pub fn focus_iter(self: *Self, direction: types.Direction, skip_floating: bool, skip_tiled: bool) void {
     log.debug("focus iter: {s}", .{ @tagName(direction) });
 
     if (self.focused_window()) |window| {
@@ -467,6 +467,7 @@ pub fn focus_iter(self: *Self, direction: types.Direction, skip_floating: bool) 
             if (new_window == window) break;
             if (new_window.is_visible_in(window.output.?)) {
                 if (skip_floating and new_window.floating) continue;
+                if (skip_tiled and !new_window.floating) continue;
                 self.focus(new_window);
                 break;
             }
@@ -475,11 +476,12 @@ pub fn focus_iter(self: *Self, direction: types.Direction, skip_floating: bool) 
 }
 
 
-pub fn focus_top_in(self: *Self, output: *Output, skip_floating: bool) ?*Window {
+pub fn focus_top_in(self: *Self, output: *Output, skip_floating: bool, skip_tiled: bool) ?*Window {
     var it = self.focus_stack.safeIterator(.forward);
     while (it.next()) |window| {
         if (window.is_visible_in(output)) {
             if (skip_floating and window.floating) continue;
+            if (skip_tiled and !window.floating) continue;
             return window;
         }
     }
@@ -487,7 +489,7 @@ pub fn focus_top_in(self: *Self, output: *Output, skip_floating: bool) ?*Window 
 }
 
 
-pub fn focused_before(self: *Self, window: *Window, skip_floating: bool) ?*Window {
+pub fn focused_before(self: *Self, window: *Window, skip_floating: bool, skip_tiled: bool) ?*Window {
     if (window.output) |output| {
         var flink = &window.flink;
         while (flink.next.? != &self.focus_stack.link) {
@@ -495,6 +497,7 @@ pub fn focused_before(self: *Self, window: *Window, skip_floating: bool) ?*Windo
             const w: *Window = @fieldParentPtr("flink", flink.next.?);
             if (w.is_visible_in(output)) {
                 if (skip_floating and w.floating) continue;
+                if (skip_tiled and !w.floating) continue;
                 return w;
             }
         }
