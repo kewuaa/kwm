@@ -82,11 +82,27 @@ fn rwm_xkb_binding_listener(rwm_xkb_binding: *river.XkbBindingV1, event: river.X
 
     switch (xkb_binding.event) {
         .click => |data| {
-            xkb_binding.seat.append_action(switch (event) {
-                .pressed => data.pressed orelse return,
-                .released => data.released orelse return,
-                .stop_repeat => return,
-            });
+            switch (event) {
+                .pressed => if (data.pressed) |action| {
+                    // force entering chorded at released
+                    if (action != .switch_mode or action.switch_mode.auto_quit == .disabled) {
+                        xkb_binding.seat.append_action(action);
+                    }
+                },
+                .released => {
+                    if (data.released) |action| {
+                        xkb_binding.seat.append_action(action);
+                    }
+
+                    if (data.pressed) |action| {
+                        // entering chorded at last
+                        if (action == .switch_mode and action.switch_mode.auto_quit != .disabled) {
+                            xkb_binding.seat.append_action(action);
+                        }
+                    }
+                },
+                .stop_repeat => {}
+            }
         },
         .repeat => |action| {
             const context = Context.get();
@@ -104,5 +120,17 @@ fn rwm_xkb_binding_listener(rwm_xkb_binding: *river.XkbBindingV1, event: river.X
                 xkb_binding.seat.append_action(action);
             }
         },
+    }
+
+    // exiting chorded at released
+    switch (xkb_binding.seat.chorded.state) {
+        .entering, .exiting => unreachable,
+        .enabled => if (event == .released) {
+            switch (xkb_binding.seat.chorded.quit_mode) {
+                .once_pressed, .once_bound_pressed => xkb_binding.seat.chorded.state = .exiting,
+                .once_unbound_pressed => {}
+            }
+        },
+        .disabled => {}
     }
 }

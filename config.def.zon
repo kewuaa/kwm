@@ -248,18 +248,8 @@
                 .event = .{
                     .click = .{
                         .pressed = .{
-                            .switch_mode = .{ .mode = "floating" },
+                            .switch_mode = .{ .mode = "floating", .auto_quit = .once_unbound_pressed },
                         },
-                    },
-                },
-            },
-            .{
-                .mode = "floating",
-                .keysym = "f",
-                .modifiers = .{ .mod4 = true, .ctrl = true },
-                .event = .{
-                    .click = .{
-                        .pressed = .{ .switch_mode = .{ .mode = "default" } },
                     },
                 },
             },

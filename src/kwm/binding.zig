@@ -47,6 +47,12 @@ pub const Action = union(enum) {
     },
     switch_mode: struct {
         mode: []const u8,
+        auto_quit: enum {
+            disabled,
+            once_pressed,
+            once_bound_pressed,
+            once_unbound_pressed,
+        } = .disabled,
     },
     toggle_fullscreen: struct {
         in_window: bool = false,
@@ -78,5 +84,4 @@ pub const Action = union(enum) {
     group: struct {
         actions: []const Action,
     },
-
 };

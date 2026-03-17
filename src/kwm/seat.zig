@@ -29,9 +29,23 @@ wl_seat: ?*wl.Seat = null,
 wl_pointer: ?*wl.Pointer = null,
 rwm_seat: *river.SeatV1,
 rwm_layer_shell_seat: *river.LayerShellSeatV1,
+rwm_xkb_binding_seat: *river.XkbBindingsSeatV1,
 
 mode_buffer: [16]u8 = undefined,
 mode: ?[]const u8 = null,
+chorded: struct {
+    state: enum {
+        entering,
+        enabled,
+        exiting,
+        disabled,
+    } = .disabled,
+    quit_mode: enum {
+        once_pressed,
+        once_bound_pressed,
+        once_unbound_pressed,
+    },
+} = .{ .state = .disabled, .quit_mode = .once_pressed },
 button: types.Button = undefined,
 focus_exclusive: bool = false,
 previous_focused: union(enum) {
@@ -58,10 +72,12 @@ pub fn create(rwm_seat: *river.SeatV1) !*Self {
 
     const rwm_layer_shell_seat = try context.rwm_layer_shell.getSeat(rwm_seat);
     errdefer rwm_layer_shell_seat.destroy();
+    const rwm_xkb_binding_seat = try context.rwm_xkb_bindings.getSeat(rwm_seat);
 
     seat.* = .{
         .rwm_seat = rwm_seat,
         .rwm_layer_shell_seat = rwm_layer_shell_seat,
+        .rwm_xkb_binding_seat = rwm_xkb_binding_seat,
         .unhandled_actions = try .initCapacity(utils.allocator, 2),
         .xkb_bindings = .init(utils.allocator),
         .pointer_bindings = .init(utils.allocator),
@@ -73,6 +89,7 @@ pub fn create(rwm_seat: *river.SeatV1) !*Self {
 
     rwm_seat.setListener(*Self, rwm_seat_listener, seat);
     rwm_layer_shell_seat.setListener(*Self, rwm_layer_shell_seat_listener, seat);
+    rwm_xkb_binding_seat.setListener(*Self, rwm_xkb_binding_seat_listener, seat);
 
     return seat;
 }
@@ -143,13 +160,36 @@ pub fn manage(self: *Self) void {
 
     const context = Context.get();
 
-    if (self.mode == null or !mem.eql(u8, self.mode.?, context.mode)) {
-        defer self.mode = fmt.bufPrint(&self.mode_buffer, "{s}", .{ context.mode }) catch unreachable;
+    if (self.chorded.state != .enabled) {
+        if (self.chorded.state == .exiting) {
+            log.debug("<{*}> exiting chorded", .{ self });
 
-        if (self.mode) |mode| {
-            self.toggle_bindings(mode, false);
+            // restore mode
+            self.toggle_bindings(context.mode, false);
+            context.switch_mode(self.mode.?);
+
+            // reset self.mode, sync with context.mode later
+            self.mode = null;
+
+            self.chorded.state = .disabled;
         }
-        self.toggle_bindings(context.mode, true);
+
+        if (self.mode == null or !mem.eql(u8, self.mode.?, context.mode)) {
+            self.toggle_bindings(context.mode, true);
+            if (self.mode) |mode| self.toggle_bindings(mode, false);
+
+            if (self.chorded.state == .entering) {
+                log.debug("<{*}> entering chorded", .{ self });
+
+                self.chorded.state = .enabled;
+            } else {
+                self.mode = fmt.bufPrint(&self.mode_buffer, "{s}", .{ context.mode }) catch unreachable;
+            }
+        }
+    }
+
+    if (self.chorded.state == .enabled){
+        self.rwm_xkb_binding_seat.ensureNextKeyEaten();
     }
 }
 
@@ -455,7 +495,26 @@ fn handle_actions(self: *Self) void {
                 }
             },
             .switch_mode => |data| {
+                if (mem.eql(u8, data.mode, context.mode)) continue;
+
                 context.switch_mode(data.mode);
+
+                if (data.auto_quit != .disabled) {
+                    switch (self.chorded.state) {
+                        .entering => log.warn("<{*}> try repeatly entering chorded", .{ self }),
+                        .enabled => log.warn("<{*}> try recursively entering chorded", .{ self }),
+                        .exiting => unreachable,
+                        .disabled => {
+                            self.chorded.state = .entering;
+                            self.chorded.quit_mode = switch (data.auto_quit) {
+                                .disabled => unreachable,
+                                .once_pressed => .once_pressed,
+                                .once_bound_pressed => .once_bound_pressed,
+                                .once_unbound_pressed => .once_unbound_pressed,
+                            };
+                        }
+                    }
+                }
             },
             .focus_iter => |data| {
                 context.focus_iter(data.direction, data.skip_floating);
@@ -819,6 +878,24 @@ fn rwm_layer_shell_seat_listener(rwm_layer_shell_seat: *river.LayerShellSeatV1, 
             log.debug("<{*}> focus none", .{ seat });
 
             seat.focus_exclusive = false;
+        }
+    }
+}
+
+
+fn rwm_xkb_binding_seat_listener(rwm_xkb_binding_seat: *river.XkbBindingsSeatV1, event: river.XkbBindingsSeatV1.Event, seat: *Self) void {
+    std.debug.assert(rwm_xkb_binding_seat == seat.rwm_xkb_binding_seat);
+
+    switch (event) {
+        .ate_unbound_key => {
+            log.debug("<{*}> ate_unbound_key", .{ seat });
+
+            std.debug.assert(seat.chorded.state == .enabled);
+
+            switch (seat.chorded.quit_mode) {
+                .once_pressed, .once_unbound_pressed => seat.chorded.state = .exiting,
+                .once_bound_pressed => {}
+            }
         }
     }
 }
