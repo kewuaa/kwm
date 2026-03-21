@@ -206,9 +206,38 @@ pub fn switch_to_previous_tag(self: *Self) void {
 }
 
 
+fn get_occupied_tags(self: *Self) u32 {
+    const context = Context.get();
+    var occupied_tags: u32 = 0;
+    var it = context.windows.safeIterator(.forward);
+    while (it.next()) |window| {
+        if (window.output == self) occupied_tags |= window.tag;
+    }
+    return occupied_tags;
+}
+
+
+pub fn switch_to_unoccupied_tag(self: *Self) void {
+    const config = Config.get();
+    const total_tags = config.tags.len;
+
+    log.debug("<{*}> switch to unoccupied tag", .{ self });
+
+    const occupied_tags = self.get_occupied_tags();
+    const all_occupied = std.math.pow(u64, 2, total_tags) - 1;
+    if (occupied_tags == 0 or occupied_tags == all_occupied) return;
+    const trailing_zeroes = @ctz(~occupied_tags);
+    var new_tag: u32 = 1;
+    for (0..trailing_zeroes) |_| {
+        new_tag <<= 1;
+    }
+    self.set_tag(new_tag);
+    if (comptime build_options.bar_enabled) self.bar.damage(.tags);
+}
+
+
 pub fn shift_tag(self: *Self, direction: types.Direction) void {
     const config = Config.get();
-    const context = Context.get();
     const total_tags = config.tags.len;
 
     log.debug("<{*}> shift tag: {}", .{ self, direction });
@@ -219,11 +248,7 @@ pub fn shift_tag(self: *Self, direction: types.Direction) void {
         return;
     }
 
-    var occupied_tags: u32 = 0;
-    var it = context.windows.safeIterator(.forward);
-    while (it.next()) |window| {
-        if (window.output == self) occupied_tags |= window.tag;
-    }
+    const occupied_tags: u32 = self.get_occupied_tags();
 
     if (occupied_tags == 0) {
         var new_tags = current_tags;

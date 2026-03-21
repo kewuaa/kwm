@@ -566,6 +566,11 @@ fn handle_actions(self: *Self) void {
                     output.switch_to_previous_tag();
                 }
             },
+            .switch_to_unoccupied_tag => {
+                if (context.current_output) |output| {
+                    output.switch_to_unoccupied_tag();
+                }
+            },
             .shift_tag => |data| {
                 if (context.current_output) |output| {
                     output.shift_tag(data.direction);
