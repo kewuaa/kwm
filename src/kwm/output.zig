@@ -348,12 +348,16 @@ fn rwm_output_listener(rwm_output: *river.OutputV1, event: river.OutputV1.Event,
 
             output.width = data.width;
             output.height = data.height;
+
+            if (comptime build_options.bar_enabled) output.bar.damage(.all);
         },
         .position => |data| {
             log.debug("<{*}> new position: (x: {}, y: {})", .{ output, data.x, data.y });
 
             output.x = data.x;
             output.y = data.y;
+
+            if (comptime build_options.bar_enabled) output.bar.damage(.all);
         },
         .removed => {
             log.debug("<{*}> removed, name: {s}", .{ output, output.name orelse "" });
