@@ -1024,6 +1024,16 @@ fn rwm_listener(rwm: *river.WindowManagerV1, event: river.WindowManagerV1.Event,
                 }
             }
 
+            // place the modal window above there parent
+            {
+                var it = context.windows.safeIterator(.forward);
+                while (it.next()) |window| {
+                    if (window.parent) |parent| {
+                        window.place(.{ .above = parent.rwm_window_node });
+                    }
+                }
+            }
+
             if (comptime build_options.background_enabled) {
                 var it = context.outputs.safeIterator(.forward);
                 while (it.next()) |output| {
