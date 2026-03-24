@@ -29,9 +29,16 @@ is_terminal: ?bool = null,
 disable_swallow: ?bool = null,
 scroller_mfact: ?f32 = null,
 attach_mode: ?kwm.WindowAttachMode = null,
+host: ?Pattern = null,
 
 
-pub fn match(self: *const Self, app_id: ?[]const u8, title: ?[]const u8) bool {
+pub fn match(self: *const Self, app_id: ?[]const u8, title: ?[]const u8, hostname: ?[] const u8) bool {
+    if (self.host) |host| {
+        if (!host.is_match(hostname)) {
+            return false;
+        }
+    }
+
     if (self.app_id) |pattern| {
         log.debug("try match app_id: `{s}` with {*}({*}: `{s}`)", .{ app_id orelse "null", self, &pattern, pattern.str });
 

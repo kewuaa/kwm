@@ -14,9 +14,15 @@ numlock: ?kwm.KeyboardNumlockState = null,
 capslock: ?kwm.KeyboardCapslockState = null,
 layout: ?kwm.KeyboardLayout = null,
 keymap: ?kwm.Keymap = null,
+host: ?Pattern = null,
 
+pub fn match(self: *const Self, name: ?[]const u8, hostname: ?[]const u8) bool {
+    if (self.host) |host| {
+        if (!host.is_match(hostname)) {
+            return false;
+        }
+    }
 
-pub fn match(self: *const Self, name: ?[]const u8) bool {
     if (self.name) |pattern| {
         log.debug("try match name: `{s}` with {*}({*}: `{s}`)", .{ name orelse "null", self, &pattern, pattern.str });
 

@@ -286,6 +286,7 @@ pub fn refresh_xursor_theme(self: *Self) void {
 pub fn create_bindings(self: *Self) void {
     log.debug("<{*}> create bindings", .{ self });
 
+    const context = Context.get();
     const config = Config.get();
 
     for (config.bindings.key) |key_binding| {
@@ -294,6 +295,11 @@ pub fn create_bindings(self: *Self) void {
                 log.err("<{*}> put a new xkb binding list failed: {}", .{ self, err });
                 continue;
             };
+        }
+        if (key_binding.host) |host| {
+            if (!host.is_match(context.hostname)) {
+                continue;
+            }
         }
         const list = self.xkb_bindings.getPtr(key_binding.mode).?;
 

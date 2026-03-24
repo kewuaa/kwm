@@ -29,6 +29,7 @@ const XkbKeyboard = @import("xkb_keyboard.zig");
 
 var ctx: ?Self = null;
 var mode_buffer: [16]u8 = undefined;
+var hostname_buffer: [posix.HOST_NAME_MAX]u8 = undefined;
 
 
 wl_registry: *wl.Registry,
@@ -65,6 +66,7 @@ bar_status_fd: ?posix.fd_t = null,
 terminal_windows: std.AutoHashMap(i32, *Window) = undefined,
 
 mode: []const u8,
+hostname: []const u8,
 running: bool = true,
 env: process.EnvMap = undefined,
 startup_processes: std.ArrayList(?process.Child) = .empty,
@@ -111,6 +113,7 @@ pub fn init(
         .key_repeat = undefined,
         .terminal_windows = .init(utils.allocator),
         .mode = fmt.bufPrint(&mode_buffer, "{s}", .{ Config.default_mode }) catch @panic("mode name too long"),
+        .hostname = std.posix.gethostname(&hostname_buffer) catch @panic("hostname too long")
     };
     ctx.?.seats.init();
     ctx.?.outputs.init();

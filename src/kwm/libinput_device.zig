@@ -9,6 +9,7 @@ const wl = wayland.client.wl;
 const river = wayland.client.river;
 
 const Config = @import("config");
+const Context = @import("context.zig");
 
 const utils = @import("utils.zig");
 const types = @import("types.zig");
@@ -113,9 +114,10 @@ pub fn apply_rules(self: *Self) void {
     log.debug("<{*}> apply rules", .{ self });
 
     const config = Config.get();
+    const context = Context.get();
 
     for (config.libinput_device_rules) |rule| {
-        if (rule.match((self.input_device orelse return).name)) {
+        if (rule.match((self.input_device orelse return).name, context.hostname)) {
             self.apply_rule(&rule);
             break;
         }

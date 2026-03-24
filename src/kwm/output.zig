@@ -121,9 +121,10 @@ pub fn apply_rules(self: *Self) void {
     log.debug("<{*}> apply rules", .{ self });
 
     const config = Config.get();
+    const context = Context.get();
 
     for (config.output_rules) |rule| {
-        if (rule.match(self.name)) {
+        if (rule.match(self.name, context.hostname)) {
             self.apply_rule(&rule);
             break;
         }

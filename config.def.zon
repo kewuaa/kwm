@@ -218,6 +218,7 @@
         //              }
         //              the corrosponding action will only trigger once when key pressed or released
         //              the pressed action and released action could define at the same time
+        //       host: rule pattern to match against system hostname, the binding will only be configured on matching hosts
         .key = .{
             .{
                 .keysym = "r",
@@ -1005,6 +1006,7 @@
     //      disable_swallow: bool, if set true, the window could not swallow any other windows
     //      scroller_mfact: f32, initial mfact of the window for scroller layout
     //      attach_mode: like `default_attach_mode`, change attach_mode for window matched
+    //      host: rule pattern to match against system hostname, the window rule will only apply on matching hosts
     .window_rules = .{
         .{ .app_id = .{ .str = "", .match_null = true }, .floating = true },
         .{ .app_id = .{ .str = "zenity" }, .floating = true },
@@ -1021,6 +1023,7 @@
     //      presentation_mode: presentation mode, .vsync or .async
     //      layout: same as `layout` before but you only need to specify the values you want to change
     //      default_layout: same as `default_layout` before
+    //      host: rule pattern to match against system hostname, the output rule will only apply on matching hosts
     .output_rules = .{
         //
     },
@@ -1031,6 +1034,7 @@
     //
     //      repeat_info: .{ .rate = i32, .delay = i32 }
     //      scroll_factor: f64
+    //      host: rule pattern to match against system hostname, the input rule will only apply on matching hosts
     .input_device_rules = .{
         .{ .repeat_info = .{ .rate = 50, .delay = 300 } },
     },
@@ -1079,6 +1083,7 @@
     //      disable_while_typing: .enabled or .disabled
     //      disable_while_trackpointing: .enabled or .disabled
     //      rotation_angle: u32
+    //      host: rule pattern to match against system hostname, the input rule will only apply on matching hosts
     .libinput_device_rules = .{
         .{ .name = .{ .str = ".*[tT]ouchpad", .regex = true }, .tap = .enabled, .drag = .enabled, .natural_scroll = .enabled },
         .{ .tap = .enabled, .drag = .enabled }
@@ -1106,6 +1111,7 @@
     //                  .options = ?[]const u8,
     //              }
     //          }
+    //      host: rule pattern to match against system hostname, the keyboard rule will only apply on matching hosts
     .xkb_keyboard_rules = .{
         //
     },

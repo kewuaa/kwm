@@ -33,9 +33,16 @@ scroll_button_lock: ?river.LibinputDeviceV1.ScrollButtonLockState = null,
 disable_while_typing: ?river.LibinputDeviceV1.DwtState = null,
 disable_while_trackpointing: ?river.LibinputDeviceV1.DwtpState = null,
 rotation_angle: ?u32 = null,
+host: ?Pattern = null,
 
 
-pub fn match(self: *const Self, name: ?[]const u8) bool {
+pub fn match(self: *const Self, name: ?[]const u8, hostname: ?[]const u8) bool {
+    if (self.host) |host| {
+        if (!host.is_match(hostname)) {
+            return false;
+        }
+    }
+
     if (self.name) |pattern| {
         log.debug("try match name: `{s}` with {*}({*}: `{s}`)", .{ name orelse "null", self, &pattern, pattern.str });
 

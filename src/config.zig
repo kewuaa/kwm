@@ -14,6 +14,7 @@ const kwm = @import("kwm");
 const rule = @import("config/rule.zig");
 const constants = @import("config/constants.zig");
 pub const meta = @import("config/meta.zig");
+const Pattern = @import("config/rule/pattern.zig");
 
 var allocator: mem.Allocator = undefined;
 
@@ -29,7 +30,6 @@ pub const OutputRule = rule.Output;
 pub const InputDeviceRule = rule.InputDevice;
 pub const LibinputDeviceRule = rule.LibinputDevice;
 pub const XkbKeyboardRule = rule.XkbKeyboard;
-
 
 env: []const struct { []const u8, []const u8 },
 
@@ -133,6 +133,7 @@ bindings: struct {
         keysym: []const u8,
         modifiers: river.SeatV1.Modifiers,
         event: kwm.XkbBindingEvent,
+        host: ?Pattern = null,
     },
     pointer: []const struct {
         mode: []const u8 = default_mode,
