@@ -310,6 +310,8 @@ pub fn create_bindings(self: *Self) void {
     const config = Config.get();
 
     for (config.bindings.key) |key_binding| {
+        if (key_binding.event == null) continue;
+
         if (!self.xkb_bindings.contains(key_binding.mode)) {
             self.xkb_bindings.put(key_binding.mode, .empty) catch |err| {
                 log.err("<{*}> put a new xkb binding list failed: {}", .{ self, err });
@@ -322,12 +324,12 @@ pub fn create_bindings(self: *Self) void {
             utils.allocator,
             binding.XkbBinding.create(
                 self,
-                keysym_from_name(key_binding.keysym) orelse {
+                Config.keysym_from_name(key_binding.keysym) orelse {
                     log.warn("ambiguous keysym name '{s}'", .{ key_binding.keysym });
                     continue;
                 },
                 key_binding.modifiers,
-                key_binding.event,
+                key_binding.event.?,
             ) catch |err| {
                 log.err("<{*}> create xkb binding failed: {}", .{ self, err });
                 continue;
@@ -349,12 +351,14 @@ pub fn create_bindings(self: *Self) void {
                 key_binding.modifiers.mod3,
                 key_binding.modifiers.mod4,
                 key_binding.modifiers.mod5,
-                key_binding.event,
+                key_binding.event.?,
             },
         );
     }
 
     for (config.bindings.pointer) |pointer_binding| {
+        if (pointer_binding.event == null) continue;
+
         if (!self.pointer_bindings.contains(pointer_binding.mode)) {
             self.pointer_bindings.put(pointer_binding.mode, .empty) catch |err| {
                 log.err("<{*}> put a new pointer binding list failed: {}", .{ self, err });
@@ -369,7 +373,7 @@ pub fn create_bindings(self: *Self) void {
                 self,
                 @intFromEnum(pointer_binding.button),
                 pointer_binding.modifiers,
-                pointer_binding.event,
+                pointer_binding.event.?,
             ) catch |err| {
                 log.err("<{*}> create pointer binding failed: {}", .{ self, err });
                 continue;
@@ -391,7 +395,7 @@ pub fn create_bindings(self: *Self) void {
                 pointer_binding.modifiers.mod3,
                 pointer_binding.modifiers.mod4,
                 pointer_binding.modifiers.mod5,
-                pointer_binding.event,
+                pointer_binding.event.?,
             },
         );
     }
@@ -967,33 +971,4 @@ fn wl_pointer_listener(wl_pointer: *wl.Pointer, event: wl.Pointer.Event, seat: *
         },
         else => {}
     }
-}
-
-
-// https://codeberg.org/river/river-classic/src/commit/f0908e2d117ede7114fa85c65622b055c565c250/river/command/map.zig#L254
-fn keysym_from_name(name: []const u8) ?u32 {
-    const n = utils.allocator.dupeZ(u8, name) catch |err| {
-        log.err("dupeZ failed while call keysym_from_name: {}", .{ err });
-        return null;
-    };
-    defer utils.allocator.free(n);
-
-    const keysym = Keysym.fromName(n, .case_insensitive);
-    if (keysym == .NoSymbol) {
-        log.err("invalid keysym `{s}`", .{ name });
-        return null;
-    }
-
-    if (@intFromEnum(keysym) == Keysym.XF86Screensaver) {
-        if (mem.eql(u8, name, "XF86Screensaver")) {
-            //
-        } else if (mem.eql(u8, name, "XF86ScreenSaver")) {
-            return Keysym.XF86ScreenSaver;
-        } else {
-            log.err("ambiguous keysym name '{s}'", .{ name });
-            return null;
-        }
-    }
-
-    return @intFromEnum(keysym);
 }
