@@ -711,11 +711,13 @@ pub fn render(self: *Self) void {
 
     if (self.position_undefined) {
         defer self.position_undefined = false;
-        log.debug("<{*}> center to output {*}", .{ self, self.output });
 
         if (self.width == 0) self.width = @divFloor(self.output.?.width, 2);
         if (self.height == 0) self.height = @divFloor(self.output.?.height, 2);
-        self.center();
+        self.center(
+            if (self.parent) |parent| .{ .window = parent }
+            else .{ .output = self.output.? },
+        );
     }
 
     log.debug("<{*}> rendering to (x: {}, y: {})", .{ self, self.x, self.y });
@@ -777,9 +779,30 @@ fn set_title(self: *Self, title: ?[]const u8) void {
 }
 
 
-fn center(self: *Self) void {
-    self.x = @divFloor(self.output.?.exclusive_width()-self.width, 2);
-    self.y = @divFloor(self.output.?.exclusive_height()-self.height, 2);
+fn center(self: *Self, base: union(enum) {
+    output: *Output,
+    window: *Self,
+}) void {
+    switch (base) {
+        .output => |o| {
+            log.debug("<{*}> center to output {*}", .{ self, o });
+            if (o != self.output) {
+                self.set_output(o, true);
+            }
+            self.x = @divFloor(o.exclusive_width()-self.width, 2);
+            self.y = @divFloor(o.exclusive_height()-self.height, 2);
+        },
+        .window => |w| {
+            log.debug("<{*}> center to window {*}", .{ self, w });
+            if (w.output) |o| {
+                if (o != self.output) {
+                    self.set_output(o, true);
+                }
+            }
+            self.x = w.x + @divFloor(w.width-self.width, 2);
+            self.y = w.y + @divFloor(w.height-self.height, 2);
+        }
+    }
 }
 
 
