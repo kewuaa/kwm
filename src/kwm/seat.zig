@@ -941,11 +941,36 @@ fn wl_seat_listener(wl_seat: *wl.Seat, event: wl.Seat.Event, seat: *Self) void {
 fn wl_pointer_listener(wl_pointer: *wl.Pointer, event: wl.Pointer.Event, seat: *Self) void {
     std.debug.assert(wl_pointer == seat.wl_pointer);
 
+    const config = Config.get();
+    const context = Context.get();
     switch (event) {
         .button => |data| {
-            log.debug("<{*}> button: {}, state: {s}", .{ seat, data.button, @tagName(data.state) });
+            log.debug("<{*}> wl_pointer: {*}, button: {}, state: {s}", .{ seat, wl_pointer, data.button, @tagName(data.state) });
 
             seat.button = @enumFromInt(data.button);
+        },
+        .enter => |data| {
+            const wl_surface = data.surface orelse return;
+
+            log.debug("<{*}> wl_pointer: {*}, enter: {*}", .{ seat, wl_pointer, wl_surface });
+
+            if (config.sloppy_focus) {
+                const shell_surface = @as(?*ShellSurface, @ptrCast(
+                    @alignCast(wl_surface.getUserData())
+                )) orelse return;
+
+                log.debug("<{*}> {*} enter {*}", .{ seat, wl_pointer, shell_surface });
+
+                const output = switch (shell_surface.type) {
+                    .bar => |bar|
+                        if (comptime build_options.bar_enabled) bar.output
+                        else unreachable,
+                    .background => |background|
+                        if (comptime build_options.background_enabled) background.output
+                        else unreachable,
+                };
+                context.set_current_output(output);
+            }
         },
         else => {}
     }

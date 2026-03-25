@@ -42,6 +42,7 @@ pub fn init(self: *Self, wl_surface: *wl.Surface, @"type": Type) !void {
     };
 
     utils.set_user_data(river.ShellSurfaceV1, rwm_shell_surface, *Self, self);
+    utils.set_user_data(wl.Surface, wl_surface, *Self, self);
 }
 
 
