@@ -266,7 +266,7 @@ fn render_background(self: *Self) void {
         .bottom => self.output.height - logical_h,
     });
 
-    const rgba = utils.rgba(config.bar.color.normal.bg);
+    const rgba = utils.rgba(config.bar_normal_bg orelse config.bar.color.normal.bg);
     const buffer = context.wp_single_pixel_buffer_manager.createU32RgbaBuffer(rgba.r, rgba.g, rgba.b, rgba.a) catch |err| {
         log.err("<{*}> create buffer failed: {}", .{ self, err });
         return;
@@ -452,9 +452,9 @@ fn render_static_component(self: *Self) void {
     }
     const focused_window = context.focused_window();
 
-    const select_fg = color(config.bar.color.select.fg);
-    const select_bg = color(config.bar.color.select.bg);
-    const normal_fg = color(config.bar.color.normal.fg);
+    const select_fg = color(config.bar_select_fg orelse config.bar.color.select.fg);
+    const select_bg = color(config.bar_select_bg orelse config.bar.color.select.bg);
+    const normal_fg = color(config.bar_normal_fg orelse config.bar.color.normal.fg);
     const transparent = mem.zeroes(pixman.Color);
 
     const bg_rect = [_]pixman.Rectangle16 {
@@ -537,9 +537,9 @@ fn render_dynamic_component(self: *Self) void {
     const context = Context.get();
     self.dynamic_splits.clearRetainingCapacity();
 
-    const normal_fg = color(config.bar.color.normal.fg);
-    const select_bg = color(config.bar.color.select.bg);
-    const select_fg = color(config.bar.color.select.fg);
+    const normal_fg = color(config.bar_normal_fg orelse config.bar.color.normal.fg);
+    const select_bg = color(config.bar_select_bg orelse config.bar.color.select.bg);
+    const select_fg = color(config.bar_select_fg orelse config.bar.color.select.fg);
     const transparent = mem.zeroes(pixman.Color);
 
     const pad = self.get_pad();

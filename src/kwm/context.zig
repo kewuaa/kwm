@@ -264,7 +264,9 @@ pub fn reload_config(self: *Self) void {
             self.stop_listening_status();
         }
 
-        if (mask.bar or mask.tags or mask.layout_tag) {
+        if (mask.bar or mask.tags or mask.layout_tag
+            or mask.bar_normal_bg or mask.bar_normal_fg
+            or mask.bar_select_bg or mask.bar_select_fg) {
             var it = self.outputs.safeIterator(.forward);
             while (it.next()) |output| {
                 if (mask.bar) {
@@ -887,8 +889,8 @@ fn prepare_render_windows(self: *Self) void {
                 if (window.fullscreen == .output) 0
                 else config.border.width,
                 if (!self.focus_exclusive() and window == focused)
-                    config.border.color.focus
-                else config.border.color.unfocus
+                    config.border_focus_color orelse config.border.color.focus
+                else config.border_unfocus_color orelse config.border.color.unfocus
             );
         }
     }

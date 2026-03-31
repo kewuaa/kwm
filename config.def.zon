@@ -1,4 +1,15 @@
 .{
+    .border_focus_color = null,
+    .border_unfocus_color = null,
+    .bar_normal_bg = null,
+    .bar_normal_fg = null,
+    .bar_select_bg = null,
+    .bar_select_fg = null,
+
+    // solid color background
+    // note: set this to .none if you use other wallpaper program like `swaybg`, orelse it will be covered by this and unable to see
+    .background = .{ .color = 0x33000000 },
+
     // environment variables
     // used by processes spawned by kwm
     .env = .{
@@ -16,10 +27,6 @@
     // or
     // .theme = .{ .name = []const u8, .size = u32 }
     .xcursor_theme = .none,
-
-    // solid color background
-    // note: set this to .none if you use other wallpaper program like `swaybg`, orelse it will be covered by this and unable to see
-    .background = .{ .color = 0x33000000 },
 
     .bar = .{
         .show_default = true,

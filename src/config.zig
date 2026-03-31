@@ -29,6 +29,13 @@ pub const WindowRule = rule.Window;
 pub const OutputRule = rule.Output;
 
 
+border_focus_color: ?u32,
+border_unfocus_color: ?u32,
+bar_normal_bg: ?u32,
+bar_normal_fg: ?u32,
+bar_select_bg: ?u32,
+bar_select_fg: ?u32,
+
 env: []const struct { []const u8, []const u8 },
 
 working_directory: union(enum) {
