@@ -745,6 +745,18 @@ pub inline fn spawn_shell(self: *Self, cmd: []const u8) ?process.Child {
 }
 
 
+fn spawn_kwim(self: *Self) void {
+    const config_path = fs.cwd().realpathAlloc(utils.allocator, Config.path) catch null;
+    defer if (config_path) |ptr| utils.allocator.free(ptr);
+
+    _ = self.spawn(&.{
+        "kwim",
+        "-c",
+        config_path orelse Config.path,
+    });
+}
+
+
 fn init_env_map(self: *Self) void {
     self.env = process.getEnvMap(utils.allocator) catch |err| blk: {
         log.warn("get EnvMap failed: {}", .{ err });
@@ -782,17 +794,6 @@ fn init_env_map(self: *Self) void {
 
 fn run_startup_cmds(self: *Self) void {
     const config = Config.get();
-
-    if (comptime build_options.install_kwim) {
-        const config_path = fs.cwd().realpathAlloc(utils.allocator, Config.path) catch null;
-        defer if (config_path) |ptr| utils.allocator.free(ptr);
-
-        _ = self.spawn(&.{
-            "kwim",
-            "-c",
-            config_path orelse Config.path,
-        });
-    }
 
     self.startup_processes.ensureTotalCapacity(utils.allocator, config.startup_cmds.len) catch |err| {
         log.err("initCapacity for startup_processes failed: {}", .{ err });
@@ -936,6 +937,7 @@ fn rwm_listener(rwm: *river.WindowManagerV1, event: river.WindowManagerV1.Event,
 
     const cache = struct {
         pub var mode: [16] u8 = undefined;
+        pub var first_manage = if (build_options.install_kwim) true else void{};
     };
 
     const config = Config.get();
@@ -953,6 +955,13 @@ fn rwm_listener(rwm: *river.WindowManagerV1, event: river.WindowManagerV1.Event,
         },
         .manage_start => {
             log.debug("manage start", .{});
+
+            if (comptime build_options.install_kwim) {
+                if (cache.first_manage) {
+                    context.spawn_kwim();
+                    cache.first_manage = false;
+                }
+            }
 
             context.prepare_manage();
 
