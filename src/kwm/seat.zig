@@ -571,6 +571,9 @@ fn handle_actions(self: *Self) void {
             .toggle_fullscreen => |data| {
                 context.toggle_fullscreen(data.in_window);
             },
+            .rotate_outputs => |data| {
+                context.rotate_outputs(data.direction);
+            },
             .set_output_tag => |data| {
                 if (context.current_output) |output| {
                     output.set_tag(data.tag.of(.{ .output = output }));

@@ -636,6 +636,56 @@ pub fn attach_window(self: *Self, window: *Window, mode: types.WindowAttachMode)
 }
 
 
+pub fn rotate_outputs(self: *Self, direction: types.Direction) void {
+    log.debug("rotate output: {s}", .{ @tagName(direction) });
+
+    if (self.outputs.length() == 1) return;
+
+    switch (direction) {
+        inline else => |d| {
+            {
+                var temp = switch (comptime d) {
+                    .forward => self.outputs.last().?.get_state(),
+                    .reverse => self.outputs.first().?.get_state(),
+                };
+                var it = self.outputs.safeIterator(@field(wl.list.Direction, @tagName(d)));
+                while (it.next()) |output| {
+                    const state = output.get_state();
+                    output.sync_state(&temp);
+                    temp = state;
+                }
+            }
+            {
+                var it = self.windows.safeIterator(.forward);
+                while (it.next()) |window| {
+                    if (window.output) |output| {
+                        window.set_output(
+                            utils.cycle_list(
+                                Output,
+                                true,
+                                &self.outputs.link,
+                                &output.link,
+                                switch (comptime d) {
+                                    .forward => .next,
+                                    .reverse => .prev,
+                                },
+                            ).?,
+                            true,
+                        );
+                    }
+                }
+            }
+            if (comptime build_options.bar_enabled) {
+                var it = self.outputs.safeIterator(.forward);
+                while (it.next()) |output| {
+                    output.bar.damage(.tags);
+                }
+            }
+        }
+    }
+}
+
+
 pub fn prepare_remove_output(self: *Self, output: *Output) void {
     log.debug("prepare to remove output {*}", .{ output });
 
