@@ -241,6 +241,12 @@ pub fn set_tag(self: *Self, tag: u32) void {
 }
 
 
+pub fn set_tag_follow(self: *Self, tag: u32) void {
+    self.set_tag(tag);
+    if (self.output) |output| output.set_tag(tag);
+}
+
+
 pub fn toggle_tag(self: *Self, mask: u32) void {
     if (self.tag ^ mask == 0) return;
 

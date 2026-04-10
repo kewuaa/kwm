@@ -594,6 +594,11 @@ fn handle_actions(self: *Self) void {
                     window.set_tag(data.tag.of(.{ .window = window }));
                 }
             },
+            .set_window_tag_follow => |data| {
+                if (context.focused_window()) |window| {
+                    window.set_tag_follow(data.tag.of(.{ .window = window }));
+                }
+            },
             .toggle_output_tag => |data| {
                 if (context.current_output) |output| {
                     output.toggle_tag(data.mask);
