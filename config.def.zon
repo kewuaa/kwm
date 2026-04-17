@@ -670,7 +670,7 @@
                 .modifiers = .{ .mod4 = true },
                 .event = .{
                     .click = .{
-                        .pressed = .toggle_floating,
+                        .pressed = .{ .toggle_floating = .{ .always_float = false } },
                     },
                 },
             },

@@ -622,9 +622,9 @@ fn handle_actions(self: *Self) void {
                     output.switch_to_previous_tag();
                 }
             },
-            .toggle_floating => {
+            .toggle_floating => |data| {
                 if (context.focused_window()) |window| {
-                    window.toggle_floating(null);
+                    window.toggle_floating(data.always_float);
                 }
             },
             .toggle_sticky => {
