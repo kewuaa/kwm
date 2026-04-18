@@ -99,6 +99,10 @@ pub const Action = union(enum) {
     },
     pointer_move,
     pointer_resize,
+    pointer_select: struct {
+        on_selected: ?*const Action,
+        on_unselected: ?*const Action,
+    },
     snap: struct {
         edge: Window.Edge,
     },

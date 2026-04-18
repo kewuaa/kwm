@@ -530,6 +530,14 @@ fn handle_actions(self: *Self) void {
                     window.prepare_resize(self);
                 }
             },
+            .pointer_select => |data| {
+                if (self.window_below_pointer.window) |window| {
+                    self.window_interaction(window);
+                    if (data.on_selected) |new_action| self.append_action(new_action.*);
+                } else {
+                    if (data.on_unselected) |new_action| self.append_action(new_action.*);
+                }
+            },
             .snap => |data| {
                 if (context.focused_window()) |window| {
                     window.ensure_floating();
