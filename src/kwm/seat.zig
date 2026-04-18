@@ -619,6 +619,15 @@ fn handle_actions(self: *Self) void {
                     window.toggle_tag(data.mask);
                 }
             },
+            .send_to_previous_tag => {
+                if (context.focused_window()) |window| {
+                    if (window.output) |output| {
+                        window.set_tag(
+                            if (output.temp_tags) |tags| tags.tag else output.prev_tag
+                        );
+                    }
+                }
+            },
             .switch_to_previous_tag => {
                 if (context.current_output) |output| {
                     output.switch_to_previous_tag();
