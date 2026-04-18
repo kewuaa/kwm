@@ -60,6 +60,11 @@ disable_wrap_around_for_scroller: bool,
 
 remember_floating_geometry: bool,
 
+minimize: union(enum) {
+    disabled,
+    send_to_tag: u32,
+},
+
 auto_swallow: bool,
 
 default_attach_mode: meta.enum_struct(kwm.Layout.Type, kwm.WindowAttachMode),
