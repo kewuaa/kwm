@@ -115,7 +115,7 @@ pub const Action = union(enum) {
     toggle_fullscreen: struct {
         in_window: bool = false,
     },
-    set_output_tag: struct { tag: Tag },
+    set_output_tag: struct { tag: Tag, traceless: bool = false },
     set_window_tag: struct { tag: Tag, focus_follow: bool = false },
     toggle_output_tag: struct { mask: u32 },
     toggle_window_tag: struct { mask: u32 },

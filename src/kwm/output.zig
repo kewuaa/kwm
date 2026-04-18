@@ -43,6 +43,10 @@ main_tag: u32 = 1,
 prev_tag: u32 = 1,
 prev_main_tag: u32 = 1,
 layout_tag: [32]Layout.Type,
+temp_tags: ?struct {
+    tag: u32,
+    main_tag: u32,
+} = null,
 prev_layout_tag: [32]Layout.Type,
 
 name: ?[]const u8 = null,
@@ -234,13 +238,23 @@ pub fn set_presentation(self: *Self, mode: river.OutputV1.PresentationMode) void
 }
 
 
-pub fn set_tag(self: *Self, tag: u32) void {
+pub fn set_tag(self: *Self, tag: u32, traceless: bool) void {
     if (tag == 0 or self.tag == tag) return;
 
     log.debug("<{*}> set tag: {b}", .{ self, tag });
 
-    self.prev_tag = self.tag;
-    self.prev_main_tag = self.main_tag;
+    if (traceless) {
+        if (self.temp_tags == null) {
+            self.temp_tags = .{
+                .tag = self.tag,
+                .main_tag = self.main_tag
+            };
+        }
+    } else {
+        self.prev_tag = self.tag;
+        self.prev_main_tag = self.main_tag;
+        self.temp_tags = null;
+    }
 
     self.tag = tag;
     if (self.main_tag & tag == 0) {
@@ -255,12 +269,20 @@ pub fn set_tag(self: *Self, tag: u32) void {
 
 
 pub fn switch_to_previous_tag(self: *Self) void {
-    const prev_main_tag = self.prev_main_tag;
+    var tag: u32, var main_tag: u32 = .{ undefined, undefined };
+    if (self.temp_tags) |tags| {
+        tag = tags.tag;
+        main_tag = tags.main_tag;
+        self.temp_tags = null;
+    } else {
+        tag = self.prev_tag;
+        main_tag = self.prev_main_tag;
+    }
 
-    self.set_tag(self.prev_tag);
+    self.set_tag(tag, false);
     log.debug("<{*}> switch to previous tag", .{ self });
 
-    self.main_tag = prev_main_tag;
+    self.main_tag = main_tag;
     log.debug("<{*}> switch to previous main tag", .{ self });
 }
 

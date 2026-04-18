@@ -595,7 +595,7 @@ fn handle_actions(self: *Self) void {
             },
             .set_output_tag => |data| {
                 if (context.current_output) |output| {
-                    output.set_tag(data.tag.of(.{ .output = output }));
+                    output.set_tag(data.tag.of(.{ .output = output }), data.traceless);
                 }
             },
             .set_window_tag => |data| {
@@ -604,7 +604,7 @@ fn handle_actions(self: *Self) void {
                     window.set_tag(new_tag);
                     if (data.focus_follow) {
                         if (window.output) |output| {
-                            output.set_tag(new_tag);
+                            output.set_tag(new_tag, false);
                         }
                     }
                 }
