@@ -801,6 +801,13 @@ pub fn spawn(self: *Self, argv: []const []const u8) ?process.Child {
         .home => self.env.get("HOME"),
         .custom => |dir| dir,
     };
+
+    var mask = posix.sigemptyset();
+    posix.sigaddset(&mask, posix.SIG.CHLD);
+    posix.sigprocmask(posix.SIG.UNBLOCK, &mask, null);
+
+    defer posix.sigprocmask(posix.SIG.BLOCK, &mask, null);
+
     child.spawn() catch |err| {
         log.err("spawn failed: {}", .{ err });
         return null;
