@@ -55,6 +55,7 @@ const Event = union(enum) {
     init,
     fullscreen: ?*Output,
     unfullscreen,
+    minimize,
     maximize: bool,
     move: MoveState,
     resize: ResizeState,
@@ -430,6 +431,13 @@ pub fn prepare_unfullscreen(self: *Self) void {
 }
 
 
+pub fn prepare_minimize(self: *Self) void {
+    log.debug("<{*}> prepare minimize", .{ self });
+
+    self.append_event(.minimize);
+}
+
+
 pub fn set_border(self: *Self, width: i32, rgb: u32) void {
     log.debug("<{*}> set border: (width: {}, color: 0x{x})", .{ self, width, rgb });
 
@@ -580,7 +588,7 @@ pub fn handle_events(self: *Self) void {
                     .window_menu = false,
                     .maximize = true,
                     .fullscreen = true,
-                    .minimize = false,
+                    .minimize = config.minimize != .disabled,
                 });
 
                 if (self.parent != null) {
@@ -673,6 +681,16 @@ pub fn handle_events(self: *Self) void {
                     }
                 }
                 self.fullscreen = .none;
+            },
+            .minimize => {
+                log.debug("<{*}> managing minimize", .{ self });
+
+                switch (config.minimize) {
+                    .disabled => {},
+                    .send_to_tag => |tag| {
+                        self.set_tag(tag);
+                    }
+                }
             },
             .maximize => |flag| {
                 log.debug("<{*}> managing maximize: {}", .{ self, flag });
@@ -1150,6 +1168,8 @@ fn rwm_window_listener(rwm_window: *river.WindowV1, event: river.WindowV1.Event,
         },
         .minimize_requested => {
             log.debug("<{*}> minimize requested", .{ window });
+
+            window.prepare_minimize();
         },
         .parent => |data| {
             const parent_rwm_window = data.parent orelse return;

@@ -102,6 +102,10 @@ pub const Action = union(enum) {
     },
     pointer_move,
     pointer_resize,
+    pointer_select: struct {
+        on_selected: ?*const Action,
+        on_unselected: ?*const Action,
+    },
     snap: struct {
         edge: Window.Edge,
     },
@@ -118,10 +122,11 @@ pub const Action = union(enum) {
     toggle_fullscreen: struct {
         in_window: bool = false,
     },
-    set_output_tag: struct { tag: Tag },
+    set_output_tag: struct { tag: Tag, traceless: bool = false },
     set_window_tag: struct { tag: Tag, focus_follow: bool = false },
     toggle_output_tag: struct { mask: u32 },
     toggle_window_tag: struct { mask: u32 },
+    send_to_previous_tag,
     switch_to_previous_tag,
     toggle_floating,
     toggle_sticky,

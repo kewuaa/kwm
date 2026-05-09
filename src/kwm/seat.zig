@@ -575,6 +575,14 @@ fn handle_actions(self: *Self) void {
                     });
                 }
             },
+            .pointer_select => |data| {
+                if (self.window_below_pointer.window) |window| {
+                    self.window_interaction(window);
+                    if (data.on_selected) |new_action| self.append_action(new_action.*);
+                } else {
+                    if (data.on_unselected) |new_action| self.append_action(new_action.*);
+                }
+            },
             .snap => |data| {
                 if (context.focused_window()) |window| {
                     window.ensure_floating();
@@ -640,7 +648,7 @@ fn handle_actions(self: *Self) void {
             },
             .set_output_tag => |data| {
                 if (context.current_output) |output| {
-                    output.set_tag(data.tag.of(.{ .output = output }));
+                    output.set_tag(data.tag.of(.{ .output = output }), data.traceless);
                 }
             },
             .set_window_tag => |data| {
@@ -649,7 +657,7 @@ fn handle_actions(self: *Self) void {
                     window.set_tag(new_tag);
                     if (data.focus_follow) {
                         if (window.output) |output| {
-                            output.set_tag(new_tag);
+                            output.set_tag(new_tag, false);
                         }
                     }
                 }
@@ -662,6 +670,15 @@ fn handle_actions(self: *Self) void {
             .toggle_window_tag => |data| {
                 if (context.focused_window()) |window| {
                     window.toggle_tag(data.mask);
+                }
+            },
+            .send_to_previous_tag => {
+                if (context.focused_window()) |window| {
+                    if (window.output) |output| {
+                        window.set_tag(
+                            if (output.temp_tags) |tags| tags.tag else output.prev_tag
+                        );
+                    }
                 }
             },
             .switch_to_previous_tag => {

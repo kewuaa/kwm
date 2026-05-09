@@ -167,6 +167,8 @@
     // if to remember last floating geometry
     .remember_floating_geometry = false,
 
+    .minimize = .disabled,
+
     .auto_swallow = true,
 
     // .top: stack top

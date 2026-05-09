@@ -260,7 +260,7 @@ pub fn zon_free(gpa: mem.Allocator, value: anytype, default: ?*const @TypeOf(val
                         if (value == ptr.*) return;
                     }
 
-                    zon_free(gpa, value.*);
+                    zon_free(gpa, value.*, null);
                     gpa.destroy(value);
                 },
                 .slice => {
