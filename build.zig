@@ -233,6 +233,12 @@ pub fn build(b: *std.Build) void {
         exe.root_module.linkSystemLibrary("fcft", .{});
     }
 
+    // Workaround for https://codeberg.org/ziglang/zig/issues/31272
+    if (optimize == .Debug) {
+        exe.use_llvm = true;
+        exe.use_lld = true;
+    }
+
     const kwm_options = b.addOptions();
     kwm_options.addOption(bool, "background_enabled", background_enabled);
     kwm_options.addOption(bool, "bar_enabled", bar_enabled);
