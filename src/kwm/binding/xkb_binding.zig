@@ -11,12 +11,10 @@ const binding = @import("../binding.zig");
 const Seat = @import("../seat.zig");
 const Context = @import("../context.zig");
 
-pub const Event = union(enum) {
-    repeat: binding.Action,
-    click: struct {
-        pressed: ?binding.Action = null,
-        released: ?binding.Action = null,
-    },
+pub const Event = struct {
+    pressed: ?binding.Action = null,
+    released: ?binding.Action = null,
+    repeat: bool = false,
 };
 
 const ctx = Context.get();
@@ -93,27 +91,22 @@ fn rwm_xkb_binding_listener(rwm_xkb_binding: *river.XkbBindingV1, event: river.X
         .disabled => {}
     }
 
-    switch (xkb_binding.event) {
-        .click => |data| blk: {
-            xkb_binding.seat.append_action(switch (event) {
-                .pressed => data.pressed orelse break :blk,
-                .released => data.released orelse break :blk,
-                .stop_repeat => break :blk,
-            });
-        },
-        .repeat => |action| {
-            if (ctx.key_repeat) |*key_repeat| {
-                switch (event) {
-                    .pressed => {
-                        key_repeat.prepare_repeat(xkb_binding, action);
-                    },
-                    .stop_repeat, .released => key_repeat.stop(xkb_binding),
-                }
-            }
+    if (xkb_binding.event.repeat) blk: {
+        const action = xkb_binding.event.pressed orelse break :blk;
 
-            if (event == .pressed) {
-                xkb_binding.seat.append_action(action);
+        if (ctx.key_repeat) |*key_repeat| {
+            switch (event) {
+                .pressed => {
+                    key_repeat.prepare_repeat(xkb_binding, action);
+                },
+                .stop_repeat, .released => key_repeat.stop(xkb_binding),
             }
-        },
+        }
     }
+
+    xkb_binding.seat.append_action(switch (event) {
+        .pressed => xkb_binding.event.pressed orelse return,
+        .released => xkb_binding.event.released orelse return,
+        .stop_repeat => return,
+    });
 }

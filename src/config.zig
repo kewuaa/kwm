@@ -79,15 +79,18 @@ pub const Config = struct {
         },
         key: []const struct {
             mode: ?[]const u8 = null,
-            keysym: []const u8,
-            modifiers: Modifiers,
-            event: kwm.XkbBindingEvent,
+            key: []const u8,
+            mods: Modifiers,
+            press: ?kwm.BindingAction = null,
+            release: ?kwm.BindingAction = null,
+            repeat: bool = false,
         },
         pointer: []const struct {
             mode: ?[]const u8 = null,
             button: kwm.Button,
-            modifiers: Modifiers,
-            event: kwm.PointerBindingEvent,
+            mods: Modifiers,
+            press: ?kwm.BindingAction = null,
+            release: ?kwm.BindingAction = null,
         }
     },
 
