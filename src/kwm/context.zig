@@ -6,6 +6,7 @@ const std = @import("std");
 const Io = std.Io;
 const fmt = std.fmt;
 const mem = std.mem;
+const math = std.math;
 const heap = std.heap;
 const process = std.process;
 const log = std.log.scoped(.context);
@@ -25,6 +26,16 @@ const Output = @import("output.zig");
 const Window = @import("window.zig");
 const KeyRepeat = @import("key_repeat.zig");
 const ShellSurface = @import("shell_surface.zig");
+
+const TimerTask = struct {
+    time: Io.Timestamp,
+    handler: *const fn(context: *Self) void,
+
+    pub fn compare(context: void, task1: TimerTask, task2: TimerTask) math.Order {
+        _ = context;
+        return math.order(task1.time.toNanoseconds(), task2.time.toNanoseconds());
+    }
+};
 
 var ctx: Self = undefined;
 var inited: bool = false;
@@ -53,6 +64,8 @@ rwm_layer_shell: *river.LayerShellV1,
 // seperate layer between floating and nonfloating
 wl_surface: *wl.Surface = undefined,
 layer_marker: ShellSurface = undefined,
+
+timer_tasks: std.PriorityQueue(TimerTask, void, TimerTask.compare) = .empty,
 
 seats: wl.list.Head(Seat, .link) = undefined,
 current_seat: ?*Seat = null,
@@ -186,6 +199,8 @@ pub fn deinit() void {
     ctx.layer_marker.deinit();
     ctx.wl_surface.destroy();
 
+    ctx.timer_tasks.deinit(ctx.gpa);
+
     // first destroy windows for it's destroy function may depends on others
     {
         var it = ctx.windows.safeIterator(.forward);
@@ -242,6 +257,32 @@ pub fn deinit() void {
 
 pub inline fn get() *Self {
     return &ctx;
+}
+
+
+pub fn run_later(self: *Self, delay: Io.Duration, handler: *const fn(*Self) void) void {
+    log.debug("run {*} {}ms later", .{ handler, delay.toMilliseconds() });
+
+    const now = Io.Timestamp.now(self.io, .awake);
+    const time = now.addDuration(delay);
+    self.timer_tasks.push(self.gpa, .{ .time = time, .handler = handler }) catch |err| {
+        log.err("push failed: {}", .{ err });
+        return;
+    };
+}
+
+
+pub fn run_timer_tasks(self: *Self) void {
+    log.debug("run timer tasks", .{});
+
+    while (self.timer_tasks.peek()) |*task| {
+        const now = std.Io.Timestamp.now(self.io, .awake);
+        if (now.toMilliseconds() >= task.time.toMilliseconds()) {
+            log.debug("run {*}", .{ task.handler });
+            task.handler(self);
+        } else break;
+        _ = self.timer_tasks.pop();
+    }
 }
 
 
