@@ -28,6 +28,7 @@ pub const BindingAction = binding.Action;
 pub const XkbBindingEvent = binding.XkbBinding.Event;
 pub const PointerBindingEvent = binding.PointerBinding.Event;
 pub const WindowDecoration = Window.Decoration;
+pub const RiverInputs = types.RiverInputs;
 pub const Button = types.Button;
 
 

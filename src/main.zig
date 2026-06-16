@@ -37,6 +37,7 @@ const Globals = struct {
     rwm: ?*river.WindowManagerV1 = null,
     rwm_xkb_bindings: ?*river.XkbBindingsV1 = null,
     rwm_layer_shell: ?*river.LayerShellV1 = null,
+    rwm_inputs: kwm.RiverInputs = .{},
 };
 
 
@@ -136,6 +137,7 @@ pub fn main(init: process.Init) !void {
             rwm,
             rwm_xkb_bindings,
             rwm_layer_shell,
+            globals.rwm_inputs,
         );
     }
     defer kwm.deinit();
@@ -166,6 +168,14 @@ fn registry_listener(registry: *wl.Registry, event: wl.Registry.Event, globals: 
                 globals.rwm_xkb_bindings = registry.bind(global.name, river.XkbBindingsV1, 2) catch return;
             } else if (mem.orderZ(u8, global.interface, river.LayerShellV1.interface.name) == .eq) {
                 globals.rwm_layer_shell = registry.bind(global.name, river.LayerShellV1, 1) catch return;
+            } else if (comptime build_options.kwim_enabled) {
+                if (mem.orderZ(u8, global.interface, river.InputManagerV1.interface.name) == .eq) {
+                    globals.rwm_inputs.input_manager = registry.bind(global.name, river.InputManagerV1, 1) catch return;
+                } else if (mem.orderZ(u8, global.interface, river.LibinputConfigV1.interface.name) == .eq) {
+                    globals.rwm_inputs.libinput_config = registry.bind(global.name, river.LibinputConfigV1, 1) catch return;
+                } else if (mem.orderZ(u8, global.interface, river.XkbConfigV1.interface.name) == .eq) {
+                    globals.rwm_inputs.xkb_config = registry.bind(global.name, river.XkbConfigV1, 1) catch return;
+                }
             }
         },
         .global_remove => {},

@@ -29,31 +29,6 @@ pub fn build(b: *std.Build) void {
     // target and optimize options) will be listed when running `zig build --help`
     // in this directory.
 
-    const scanner = wayland.Scanner.create(b, .{});
-
-    scanner.addSystemProtocol("stable/viewporter/viewporter.xml");
-    scanner.addSystemProtocol("stable/tablet/tablet-v2.xml");
-    scanner.addSystemProtocol("staging/cursor-shape/cursor-shape-v1.xml");
-    scanner.addSystemProtocol("staging/fractional-scale/fractional-scale-v1.xml");
-    scanner.addSystemProtocol("staging/single-pixel-buffer/single-pixel-buffer-v1.xml");
-    scanner.addCustomProtocol(b.path("protocol/river-window-management-v1.xml"));
-    scanner.addCustomProtocol(b.path("protocol/river-xkb-bindings-v1.xml"));
-    scanner.addCustomProtocol(b.path("protocol/river-layer-shell-v1.xml"));
-
-    scanner.generate("wl_compositor", 4);
-    scanner.generate("wl_subcompositor", 1);
-    scanner.generate("wl_shm", 1);
-    scanner.generate("wl_seat", 7);
-    scanner.generate("wl_output", 4);
-    scanner.generate("wp_viewporter", 1);
-    scanner.generate("zwp_tablet_manager_v2", 2);
-    scanner.generate("wp_cursor_shape_manager_v1", 1);
-    scanner.generate("wp_fractional_scale_manager_v1", 1);
-    scanner.generate("wp_single_pixel_buffer_manager_v1", 1);
-    scanner.generate("river_window_manager_v1", 4);
-    scanner.generate("river_xkb_bindings_v1", 2);
-    scanner.generate("river_layer_shell_v1", 1);
-
     const full_version = blk: {
         if (b.option([]const u8, "version-string", "Override `kwm -version` output.")) |version_override| {
             break :blk version_override;
@@ -86,6 +61,41 @@ pub fn build(b: *std.Build) void {
     const background_enabled = b.option(bool, "background", "if enable background") orelse false;
     const bar_enabled = b.option(bool, "bar", "if enable bar") orelse true;
     const kwim_enabled = b.option(bool, "kwim", "if to call `kwim` automatically") orelse true;
+
+    const scanner = wayland.Scanner.create(b, .{});
+
+    scanner.addSystemProtocol("stable/viewporter/viewporter.xml");
+    scanner.addSystemProtocol("stable/tablet/tablet-v2.xml");
+    scanner.addSystemProtocol("staging/cursor-shape/cursor-shape-v1.xml");
+    scanner.addSystemProtocol("staging/fractional-scale/fractional-scale-v1.xml");
+    scanner.addSystemProtocol("staging/single-pixel-buffer/single-pixel-buffer-v1.xml");
+    scanner.addCustomProtocol(b.path("protocol/river-window-management-v1.xml"));
+    scanner.addCustomProtocol(b.path("protocol/river-xkb-bindings-v1.xml"));
+    scanner.addCustomProtocol(b.path("protocol/river-layer-shell-v1.xml"));
+    if (kwim_enabled) {
+        scanner.addCustomProtocol(b.path("protocol/river-input-management-v1.xml"));
+        scanner.addCustomProtocol(b.path("protocol/river-libinput-config-v1.xml"));
+        scanner.addCustomProtocol(b.path("protocol/river-xkb-config-v1.xml"));
+    }
+
+    scanner.generate("wl_compositor", 4);
+    scanner.generate("wl_subcompositor", 1);
+    scanner.generate("wl_shm", 1);
+    scanner.generate("wl_seat", 7);
+    scanner.generate("wl_output", 4);
+    scanner.generate("wp_viewporter", 1);
+    scanner.generate("zwp_tablet_manager_v2", 2);
+    scanner.generate("wp_cursor_shape_manager_v1", 1);
+    scanner.generate("wp_fractional_scale_manager_v1", 1);
+    scanner.generate("wp_single_pixel_buffer_manager_v1", 1);
+    scanner.generate("river_window_manager_v1", 4);
+    scanner.generate("river_xkb_bindings_v1", 2);
+    scanner.generate("river_layer_shell_v1", 1);
+    if (kwim_enabled) {
+        scanner.generate("river_input_manager_v1", 1);
+        scanner.generate("river_libinput_config_v1", 1);
+        scanner.generate("river_xkb_config_v1", 1);
+    }
 
     const wayland_mod = b.createModule(.{ .root_source_file = scanner.result });
     const xkbcommon_mod = b.dependency("xkbcommon", .{}).module("xkbcommon");
@@ -254,6 +264,7 @@ pub fn build(b: *std.Build) void {
 
     const root_options = b.addOptions();
     root_options.addOption([]const u8, "version", full_version);
+    root_options.addOption(bool, "kwim_enabled", kwim_enabled);
     exe.root_module.addOptions("build_options", root_options);
 
     // This declares intent for the executable to be installed into the
