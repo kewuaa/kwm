@@ -83,13 +83,14 @@ fn rwm_xkb_binding_listener(rwm_xkb_binding: *river.XkbBindingV1, event: river.X
 
     // exiting chorded
     switch (xkb_binding.seat.chorded.state) {
-        .entering, .exiting => unreachable,
+        .entering => unreachable,
         .enabled => if (event == .pressed) {
             switch (xkb_binding.seat.chorded.quit_mode) {
                 .once_pressed, .once_bound_pressed => xkb_binding.seat.chorded.state = .exiting,
                 .once_unbound_pressed => {}
             }
         },
+        .exiting => if (event == .pressed) unreachable,
         .disabled => {}
     }
 
