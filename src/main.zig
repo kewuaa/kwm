@@ -16,11 +16,13 @@ const kwm = @import("kwm");
 const flags = @import("flags");
 const Config = @import("config");
 
+var runtime_log_level: std.log.Level = if (builtins.mode == .Debug) .debug else .info;
 const usage =
     \\usage: kwm [options]
     \\  -h,-help               Print this help message and exit.
     \\  -v,-version            Print the version number and exit.
     \\  -c,-config             Specify custom configuration file path.
+    \\  -log-level             Specify log level.
     \\
 ;
 
@@ -49,6 +51,7 @@ pub fn main(init: process.Init) !void {
             .{ .name = "config", .kind = .arg },
             .{ .name = "v", .kind = .boolean },
             .{ .name = "version", .kind = .boolean },
+            .{ .name = "log-level", .kind = .arg },
         },
     ).parse(args[1..]) catch {
         try print(init.io, .stderr, usage);
@@ -61,6 +64,21 @@ pub fn main(init: process.Init) !void {
     if (options.flags.v or options.flags.version) {
         try print(init.io, .stdout, build_options.version++"\n");
         process.exit(0);
+    }
+    if (options.flags.@"log-level") |level| {
+        if (mem.eql(u8, level, "error")) {
+            runtime_log_level = .err;
+        } else if (mem.eql(u8, level, "warning")) {
+            runtime_log_level = .warn;
+        } else if (mem.eql(u8, level, "info")) {
+            runtime_log_level = .info;
+        } else if (mem.eql(u8, level, "debug")) {
+            runtime_log_level = .debug;
+        } else {
+            log.err("invalid log level '{s}'", .{level});
+            try print(init.io, .stderr, usage);
+            process.exit(1);
+        }
     }
     if (options.args.len != 0) {
         log.err("unknown option '{s}'", .{options.args[0]});
@@ -164,4 +182,22 @@ fn print(io: Io, dest: enum { stdout, stderr }, bytes: []const u8) !void {
     const interface = &writer.interface;
     try interface.writeAll(bytes);
     try interface.flush();
+}
+
+
+pub const std_options: std.Options = .{
+    .log_level = .debug,
+    .logFn = log_fn,
+};
+
+
+pub fn log_fn(
+    comptime level: log.Level,
+    comptime scope: @TypeOf(.EnumLiteral),
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    if (@intFromEnum(level) > @intFromEnum(runtime_log_level)) return;
+
+    log.defaultLog(level, scope, format, args);
 }
