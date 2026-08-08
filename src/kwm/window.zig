@@ -704,6 +704,7 @@ pub fn handle_events(self: *Self) void {
                 switch (state) {
                     .start => |data| {
                         data.seat.op_start(.{ .resize = data.direction });
+                        self.rwm_window.informResizeStart();
                         self.operator = .{
                             .resize = .{
                                 .start_x = self.x,
@@ -719,6 +720,7 @@ pub fn handle_events(self: *Self) void {
                         switch (self.operator) {
                             .resize => |op_data| {
                                 op_data.seat.op_end();
+                                self.rwm_window.informResizeEnd();
                             },
                             else => unreachable,
                         }
