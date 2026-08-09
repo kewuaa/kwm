@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2026 kewuaa
+# SPDX-License-Identifier: 0BSD OR CC0-1.0
+
 .zig-cache/
 zig-out/
 zig-pkg/
