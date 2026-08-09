@@ -5,3 +5,4 @@
 zig-out/
 zig-pkg/
 /config.zon
+flake.lock
