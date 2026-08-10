@@ -6,6 +6,7 @@ const std = @import("std");
 const Io = std.Io;
 const fmt = std.fmt;
 const mem = std.mem;
+const math = std.math;
 const heap = std.heap;
 const process = std.process;
 const log = std.log.scoped(.context);
@@ -25,6 +26,16 @@ const Output = @import("output.zig");
 const Window = @import("window.zig");
 const KeyRepeat = @import("key_repeat.zig");
 const ShellSurface = @import("shell_surface.zig");
+
+const TimerTask = struct {
+    time: Io.Timestamp,
+    handler: *const fn(context: *Self) void,
+
+    pub fn compare(context: void, task1: TimerTask, task2: TimerTask) math.Order {
+        _ = context;
+        return math.order(task1.time.toNanoseconds(), task2.time.toNanoseconds());
+    }
+};
 
 var ctx: Self = undefined;
 var inited: bool = false;
@@ -49,10 +60,13 @@ wp_single_pixel_buffer_manager: *wp.SinglePixelBufferManagerV1,
 rwm: *river.WindowManagerV1,
 rwm_xkb_bindings: *river.XkbBindingsV1,
 rwm_layer_shell: *river.LayerShellV1,
+rwm_inputs: if (build_options.kwim_enabled) types.RiverInputs else void = if (build_options.kwim_enabled) .{} else {},
 
 // seperate layer between floating and nonfloating
 wl_surface: *wl.Surface = undefined,
 layer_marker: ShellSurface = undefined,
+
+timer_tasks: std.PriorityQueue(TimerTask, void, TimerTask.compare) = .empty,
 
 seats: wl.list.Head(Seat, .link) = undefined,
 current_seat: ?*Seat = null,
@@ -73,6 +87,7 @@ output_states: std.StringHashMap(*Output.State) = undefined,
 
 mode: []const u8,
 running: bool = true,
+any_inputs_plugged: bool = false,
 env: process.Environ.Map = undefined,
 startup_processes: std.ArrayList(process.Child) = .empty,
 quit_hook: ?struct {
@@ -102,6 +117,7 @@ pub fn init(
     rwm: *river.WindowManagerV1,
     rwm_xkb_bindings: *river.XkbBindingsV1,
     rwm_layer_shell: *river.LayerShellV1,
+    rwm_inputs: types.RiverInputs,
 ) !void {
     // initialize once
     if (inited) return;
@@ -157,6 +173,19 @@ pub fn init(
     ctx.run_startup_cmds();
 
     rwm.setListener(*Self, rwm_listener, &ctx);
+    if (comptime build_options.kwim_enabled) {
+        ctx.rwm_inputs = rwm_inputs;
+
+        if (ctx.rwm_inputs.input_manager) |input_manager| {
+            input_manager.setListener(*Self, rwm_input_manager_listener, &ctx);
+        }
+        if (ctx.rwm_inputs.libinput_config) |libinput_config| {
+            libinput_config.setListener(*Self, rwm_libinput_config_listener, &ctx);
+        }
+        if (ctx.rwm_inputs.xkb_config) |xkb_config| {
+            xkb_config.setListener(*Self, rwm_xkb_config_listener, &ctx);
+        }
+    }
 
     inited = true;
 }
@@ -185,6 +214,11 @@ pub fn deinit() void {
     ctx.rwm_layer_shell.destroy();
     ctx.layer_marker.deinit();
     ctx.wl_surface.destroy();
+    if (comptime build_options.kwim_enabled) {
+        ctx.rwm_inputs.destroy();
+    }
+
+    ctx.timer_tasks.deinit(ctx.gpa);
 
     // first destroy windows for it's destroy function may depends on others
     {
@@ -242,6 +276,32 @@ pub fn deinit() void {
 
 pub inline fn get() *Self {
     return &ctx;
+}
+
+
+pub fn run_later(self: *Self, delay: Io.Duration, handler: *const fn(*Self) void) void {
+    log.debug("run {*} {}ms later", .{ handler, delay.toMilliseconds() });
+
+    const now = Io.Timestamp.now(self.io, .awake);
+    const time = now.addDuration(delay);
+    self.timer_tasks.push(self.gpa, .{ .time = time, .handler = handler }) catch |err| {
+        log.err("push failed: {}", .{ err });
+        return;
+    };
+}
+
+
+pub fn run_timer_tasks(self: *Self) void {
+    log.debug("run timer tasks", .{});
+
+    while (self.timer_tasks.peek()) |*task| {
+        const now = std.Io.Timestamp.now(self.io, .awake);
+        if (now.toMilliseconds() >= task.time.toMilliseconds()) {
+            log.debug("run {*}", .{ task.handler });
+            task.handler(self);
+        } else break;
+        _ = self.timer_tasks.pop();
+    }
 }
 
 
@@ -1299,6 +1359,84 @@ fn rwm_listener(rwm: *river.WindowManagerV1, event: river.WindowManagerV1.Event,
             log.debug("session unlocked", .{});
 
             context.switch_mode(mem.span(@as([*:0]const u8, @ptrCast(&cache.mode))));
+        }
+    }
+}
+
+
+fn trigger_hotplug(self: *Self) void {
+    log.debug("trigger hotplug", .{});
+
+    if (!self.any_inputs_plugged) {
+        self.any_inputs_plugged = true;
+        self.run_later(.fromMilliseconds(100), hotplug_inputs);
+    }
+}
+
+
+fn hotplug_inputs(self: *Self) void {
+    if (self.any_inputs_plugged) {
+        self.any_inputs_plugged = false;
+
+        log.debug("hotplug inputs", .{});
+        self.spawn(&.{ "kwim" });
+    }
+}
+
+
+fn rwm_input_manager_listener(rwm_input_manager: *river.InputManagerV1, event: river.InputManagerV1.Event, context: *Self) void {
+    std.debug.assert(rwm_input_manager == context.rwm_inputs.input_manager);
+
+    switch (event) {
+        .input_device => |data| {
+            log.debug("new input_device {*}", .{ data.id });
+
+            context.trigger_hotplug();
+            data.id.destroy();
+        },
+        .finished => {
+            log.debug("{*} finished", .{ rwm_input_manager });
+
+            rwm_input_manager.destroy();
+        }
+    }
+}
+
+
+fn rwm_libinput_config_listener(rwm_libinput_config: *river.LibinputConfigV1, event: river.LibinputConfigV1.Event, context: *Self) void {
+    std.debug.assert(rwm_libinput_config == context.rwm_inputs.libinput_config);
+
+    switch (event) {
+        .libinput_device => |data| {
+            log.debug("new libinput_device {*}", .{ data.id });
+
+            context.trigger_hotplug();
+            data.id.destroy();
+        },
+        .finished => {
+            log.debug("{*} finished", .{ rwm_libinput_config });
+
+            rwm_libinput_config.destroy();
+        }
+    }
+}
+
+
+fn rwm_xkb_config_listener(rwm_xkb_config: *river.XkbConfigV1, event: river.XkbConfigV1.Event, context: *Self) void {
+    std.debug.assert(rwm_xkb_config == context.rwm_inputs.xkb_config);
+
+    switch (event) {
+        .xkb_keyboard => |data| {
+            log.debug("new xkb_keyboard {*}", .{ data.id });
+
+            context.trigger_hotplug();
+            data.id.destroy();
+
+        },
+        .finished => {
+            log.debug("{*} finished", .{ rwm_xkb_config });
+
+            rwm_xkb_config.destroy();
         }
     }
 }

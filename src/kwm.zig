@@ -1,5 +1,6 @@
 const build_options = @import("build_options");
 const std = @import("std");
+const Io = std.Io;
 const log = std.log.scoped(.kwm);
 
 const wayland = @import("wayland");
@@ -27,6 +28,7 @@ pub const BindingAction = binding.Action;
 pub const XkbBindingEvent = binding.XkbBinding.Event;
 pub const PointerBindingEvent = binding.PointerBinding.Event;
 pub const WindowDecoration = Window.Decoration;
+pub const RiverInputs = types.RiverInputs;
 pub const Button = types.Button;
 
 
@@ -80,8 +82,15 @@ pub fn run(wl_display: *wl.Display) !void {
             }
         }
 
+        ctx.run_timer_tasks();
         _ = wl_display.flush();
-        _ = try posix.poll(poll_fds.items, -1);
+
+        const timeout =
+            if (ctx.timer_tasks.peek()) |*task|
+                task.time.toMilliseconds() - Io.Timestamp.now(ctx.io, .awake).toMilliseconds()
+            else -1;
+        log.debug("poll timeout: {}", .{ timeout });
+        _ = try posix.poll(poll_fds.items, @intCast(timeout));
 
         for (fd_types.items, poll_fds.items) |fd_type, poll_fd| {
             if (poll_fd.revents & posix.POLL.IN != 0) {
@@ -99,7 +108,6 @@ pub fn run(wl_display: *wl.Display) !void {
                 }
             }
         }
-
     }
 }
 

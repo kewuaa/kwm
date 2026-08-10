@@ -1107,12 +1107,6 @@ fn wl_seat_listener(wl_seat: *wl.Seat, event: wl.Seat.Event, seat: *Self) void {
                 seat.wl_pointer = wl_pointer;
                 seat.cursor_shape_device = ctx.wp_cursor_shape_manager.getPointer(wl_pointer) catch null;
             }
-
-            // automatically run `kwim` when receive `capabilities` event
-            // since if tty switched, the `capabilities` event will be resent
-            if (comptime build_options.kwim_enabled) {
-                ctx.spawn(&.{ "kwim" });
-            }
         }
     }
 }
