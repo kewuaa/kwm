@@ -50,6 +50,11 @@ pub const Config = struct {
         on_focus_changed,
     },
 
+    hide_cursor: ?struct {
+        when_typing: bool = false,
+        timeout: ?u32 = null,
+    },
+
     disable_wrap_around_for_scroller: bool,
 
     remember_floating_geometry: bool,
