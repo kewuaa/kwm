@@ -538,9 +538,9 @@ pub fn is_visible_in(self: *Self, output: *Output) bool {
     if (self.output.? != output) return false;
 
     return (
-        self.sticky or
-        (self.tag & output.tag) != 0
-        ) and self.swallowed_by == null;
+        self.sticky
+        or (self.tag & output.tag) != 0
+    ) and self.swallowed_by == null;
 }
 
 

@@ -160,22 +160,22 @@ pub fn op_start(self: *Self, @"type": union(enum) { move, resize: Window.ResizeD
                         .forward => .s_resize,
                         .reverse => .n_resize,
                     }
-                 else if (direction.vertical == null)
+                else if (direction.vertical == null)
                     switch (direction.horizontal.?) {
                         .forward => .e_resize,
                         .reverse => .w_resize,
                     }
-                 else
-                     switch (direction.vertical.?) {
-                         .forward => switch (direction.horizontal.?) {
-                             .forward => .se_resize,
-                             .reverse => .sw_resize,
-                         },
-                         .reverse => switch (direction.horizontal.?) {
-                             .forward => .ne_resize,
-                             .reverse => .nw_resize,
-                         },
-                     }
+                else
+                    switch (direction.vertical.?) {
+                        .forward => switch (direction.horizontal.?) {
+                            .forward => .se_resize,
+                            .reverse => .sw_resize,
+                        },
+                        .reverse => switch (direction.horizontal.?) {
+                            .forward => .ne_resize,
+                            .reverse => .nw_resize,
+                        },
+                    }
         });
     }
 
