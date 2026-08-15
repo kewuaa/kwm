@@ -67,6 +67,10 @@ window_below_pointer: struct {
     new: bool = false,
 } = .{},
 has_pointer_interaction: bool = false,
+cursor_hidden: struct {
+    flag: bool = false,
+    new: bool = false,
+} = .{},
 unhandled_actions: std.ArrayList(binding.Action) = undefined,
 xkb_bindings: std.StringHashMap(std.ArrayList(*binding.XkbBinding)) = undefined,
 pointer_bindings: std.StringHashMap(std.ArrayList(*binding.PointerBinding)) = undefined,
@@ -194,10 +198,52 @@ pub fn op_end(self: *Self) void {
 }
 
 
+pub fn hide_cursor(self: *Self, flag: bool) void {
+    if (self.cursor_hidden.flag == flag) return;
+
+    log.debug("<{*}> hide cursor: {}", .{ self, flag });
+
+    if (flag) {
+        const wl_pointer = self.wl_pointer orelse {
+            log.warn("<{*}> null wl_pointer", .{ self });
+            return;
+        };
+
+        wl_pointer.setCursor(0, null, 0, 0);
+    } else {
+        const cursor_shape_device = self.cursor_shape_device orelse {
+            log.warn("<{*}> null cursor_shape_device", .{ self });
+            return;
+        };
+
+        cursor_shape_device.setShape(0, .default);
+    }
+
+    self.cursor_hidden = .{
+        .flag = flag,
+        .new = true,
+    };
+}
+
+
+pub inline fn cursor_is_hidden(self: *const Self) bool {
+    return self.cursor_hidden.flag;
+}
+
+
 pub fn manage(self: *Self) void {
     defer log.debug("<{*}> managed", .{ self });
 
+    defer self.cursor_hidden.new = false;
     defer self.pointer_position.new = false;
+
+    if (self.cursor_hidden.new) {
+        if (self.cursor_is_hidden()) {
+            self.rwm_seat.opStartPointer();
+        } else {
+            self.rwm_seat.opEnd();
+        }
+    }
 
     // TODO: https://codeberg.org/river/river/issues/1317
     // if ctx.cfg.sloppy_focus is true, once pointer activity, check window_below_pointer.new,
@@ -537,6 +583,11 @@ fn handle_actions(self: *Self) void {
                 }
             },
             .pointer_move => {
+                if (self.cursor_is_hidden()) {
+                    log.debug("<{*}> cursor is hidden, unable to move", .{ self });
+                    continue;
+                }
+
                 if (self.window_below_pointer.window) |window| {
                     self.window_interaction(window);
                     window.ensure_floating();
@@ -904,9 +955,16 @@ fn rwm_seat_listener(rwm_seat: *river.SeatV1, event: river.SeatV1.Event, seat: *
         .op_delta => |data| {
             log.debug("<{*}> op delta: (dx: {}, dy: {})", .{ seat, data.dx, data.dy });
 
-            const window = ctx.focused_window().?;
+            if (seat.cursor_is_hidden()) {
+                seat.hide_cursor(false);
+                return;
+            }
+
+            // NOTE: focused window may be null when hiding cursor
+            const window = ctx.focused_window() orelse return;
+
             switch (window.operator) {
-                .none => unreachable,
+                .none => return,
                 .move => |op_data| {
                     if (op_data.seat == seat) {
                         window.move(
@@ -954,6 +1012,11 @@ fn rwm_seat_listener(rwm_seat: *river.SeatV1, event: river.SeatV1.Event, seat: *
         },
         .op_release => {
             log.debug("<{*}> op release", .{ seat });
+
+            if (seat.cursor_is_hidden()) {
+                seat.hide_cursor(false);
+                return;
+            }
 
             if (ctx.focused_window()) |window| {
                 switch (window.operator) {
