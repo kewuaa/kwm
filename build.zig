@@ -88,7 +88,7 @@ pub fn build(b: *std.Build) void {
     scanner.generate("wp_cursor_shape_manager_v1", 1);
     scanner.generate("wp_fractional_scale_manager_v1", 1);
     scanner.generate("wp_single_pixel_buffer_manager_v1", 1);
-    scanner.generate("river_window_manager_v1", 4);
+    scanner.generate("river_window_manager_v1", 6);
     scanner.generate("river_xkb_bindings_v1", 2);
     scanner.generate("river_layer_shell_v1", 1);
     if (kwim_enabled) {

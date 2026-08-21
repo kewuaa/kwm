@@ -14,6 +14,8 @@ const Color = struct {
 const Scheme = struct {
     normal: Color,
     select: Color,
+    // null renders urgent tags in the default warning colors
+    urgent: ?Color = null,
 };
 const BarArea = union(kwm.BarArea) {
     tags,

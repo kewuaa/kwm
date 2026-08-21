@@ -85,6 +85,7 @@ maximize: bool = false,
 floating: bool = false,
 sticky: bool = false,
 hidden: bool = false,
+urgent: bool = false,
 clip_state: enum {
     unknow,
     normal,
@@ -1052,6 +1053,20 @@ fn rwm_window_listener(rwm_window: *river.WindowV1, event: river.WindowV1.Event,
             log.debug("<{*}> closed", .{ window });
 
             window.destroy();
+        },
+        .capture_sessions => {},
+        .activation_requested => |data| {
+            log.debug("<{*}> activation requested (seat: {?*}, token: {s})", .{ window, data.seat, data.token });
+
+            // Urgency only for now: the focused window already has the
+            // user's attention. The seat/token args allow smarter policy
+            // (focus-on-activation for launches the WM initiated) later.
+            if (window != ctx.focused_window()) {
+                window.urgent = true;
+                if (comptime build_options.bar_enabled) {
+                    if (window.output) |output| output.bar.damage(.tags);
+                }
+            }
         },
         .decoration_hint => |data| {
             log.debug("<{*}> decoration hint: {s}", .{ window, @tagName(data.hint) });

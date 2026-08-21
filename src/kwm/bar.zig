@@ -381,6 +381,7 @@ fn render_static_component(self: *Self) void {
     const buffer = self.next_buffer(.static, w, h) orelse return;
 
     const windows_tag: u32 = self.output.occupied_tags();
+    const urgent_tag: u32 = self.output.urgent_tags();
     const focused_window = ctx.focused_window();
 
     const scheme = ctx.cfg.bar.get_scheme(.tags);
@@ -388,6 +389,10 @@ fn render_static_component(self: *Self) void {
     const select_bg = render_.utils.color(scheme.select.bg);
     const normal_fg = render_.utils.color(scheme.normal.fg);
     const normal_bg = render_.utils.color(scheme.normal.bg);
+    // solarized yellow warning colors unless configured
+    const urgent_scheme: @TypeOf(scheme.normal) = scheme.urgent orelse .{ .fg = 0x002b36ff, .bg = 0xb58900ff };
+    const urgent_fg = render_.utils.color(urgent_scheme.fg);
+    const urgent_bg = render_.utils.color(urgent_scheme.bg);
 
     const bg_rect = [_]pixman.Rectangle16 {
         .{
@@ -405,11 +410,16 @@ fn render_static_component(self: *Self) void {
         const tag: u32 = @as(u32, @intCast(1)) << @as(u5, @intCast(i));
 
         const is_focused = self.output.tag & tag != 0;
+        // urgency outranks focus: an urgent tag stays loud until visited
+        const is_urgent = urgent_tag & tag != 0;
 
-        const tag_width: u16 = @intCast(render_.utils.text_width(text)+pad); 
+        const fg = if (is_urgent) &urgent_fg else if (is_focused) &select_fg else &normal_fg;
+        const bg = if (is_urgent) &urgent_bg else if (is_focused) &select_bg else &normal_bg;
+
+        const tag_width: u16 = @intCast(render_.utils.text_width(text)+pad);
         defer x += @intCast(tag_width);
 
-        if (is_focused) {
+        if (is_focused or is_urgent) {
             const tag_rect = [_]pixman.Rectangle16 {
                 .{
                     .x = x,
@@ -421,7 +431,7 @@ fn render_static_component(self: *Self) void {
             _ = pixman.Image.fillRectangles(
                 .src,
                 buffer.image,
-                &select_bg,
+                bg,
                 1,
                 &tag_rect,
             );
@@ -432,7 +442,7 @@ fn render_static_component(self: *Self) void {
                 buffer,
                 false,
                 .top,
-                if (is_focused) &select_fg else &normal_fg,
+                fg,
                 x,
                 y,
             );
@@ -442,7 +452,7 @@ fn render_static_component(self: *Self) void {
                     buffer,
                     true,
                     .top,
-                    if (is_focused) &select_bg else &normal_bg,
+                    bg,
                     x,
                     y,
                 );
@@ -452,7 +462,7 @@ fn render_static_component(self: *Self) void {
         _ = self.font.render_text(
             buffer,
             text,
-            if (is_focused) &select_fg else &normal_fg,
+            fg,
             x+@as(i16, @intCast(@divFloor(pad, 2))),
             y,
         );
