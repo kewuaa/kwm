@@ -1392,7 +1392,13 @@ fn rwm_input_manager_listener(rwm_input_manager: *river.InputManagerV1, event: r
             log.debug("new input_device {*}", .{ data.id });
 
             context.trigger_hotplug();
-            data.id.destroy();
+
+            // delay destroy `input_device` object
+            // if `input_device` destroy right now, at the same time
+            // `libinput_device` event or `xkb_keyboard` event came in next flush,
+            // then the crash will occur. Because `libinput_device` and `xkb_keyboard` are all
+            // depend on the reference of `input_device` object.
+            data.id.setListener(*Self, rwm_input_device_listener, context);
         },
         .finished => {
             log.debug("{*} finished", .{ rwm_input_manager });
@@ -1438,6 +1444,18 @@ fn rwm_xkb_config_listener(rwm_xkb_config: *river.XkbConfigV1, event: river.XkbC
 
             rwm_xkb_config.destroy();
         }
+    }
+}
+
+
+fn rwm_input_device_listener(rwm_input_device: *river.InputDeviceV1, event: river.InputDeviceV1.Event, _: *Self) void {
+    switch (event) {
+        .removed => {
+            log.debug("<{*}> removed", .{ rwm_input_device });
+
+            rwm_input_device.destroy();
+        },
+        else => {}
     }
 }
 
