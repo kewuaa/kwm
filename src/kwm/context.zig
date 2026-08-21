@@ -1392,13 +1392,33 @@ fn rwm_input_manager_listener(rwm_input_manager: *river.InputManagerV1, event: r
             log.debug("new input_device {*}", .{ data.id });
 
             context.trigger_hotplug();
-            data.id.destroy();
+
+            // The device object must stay alive until its removed event:
+            // river_xkb_keyboard_v1.input_device and
+            // river_libinput_device_v1.input_device reference it as their
+            // first event, and destroying it here races those in-flight
+            // events into a fatal unknown-object dispatch error.
+            data.id.setListener(*Self, rwm_input_device_listener, context);
         },
         .finished => {
             log.debug("{*} finished", .{ rwm_input_manager });
 
             rwm_input_manager.destroy();
         }
+    }
+}
+
+
+fn rwm_input_device_listener(rwm_input_device: *river.InputDeviceV1, event: river.InputDeviceV1.Event, context: *Self) void {
+    _ = context;
+
+    switch (event) {
+        .removed => {
+            log.debug("input_device {*} removed", .{ rwm_input_device });
+
+            rwm_input_device.destroy();
+        },
+        .type, .name => {}
     }
 }
 
