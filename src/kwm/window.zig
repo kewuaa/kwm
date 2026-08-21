@@ -105,6 +105,7 @@ swallowing: ?*Self = null,
 swallowed_by: ?*Self = null,
 disable_swallow: bool = false,
 swallowing_border: ?CustomBorder = null,
+floating_border: ?CustomBorder = null,
 
 x: i32 = 0,
 y: i32 = 0,
@@ -197,6 +198,10 @@ pub fn destroy(self: *Self) void {
         ctx.unregister_terminal(self);
     }
     self.unswallow();
+    if (self.floating_border) |*border| {
+        border.deinit();
+        self.floating_border = null;
+    }
 
     if (comptime build_options.bar_enabled) {
         if (self.output) |output| output.bar.damage(.tags);
@@ -360,6 +365,9 @@ pub fn resize(self: *Self, width: ?i32, height: ?i32) void {
     if (self.swallowing_border) |*border| {
         border.damage();
     }
+    if (self.floating_border) |*border| {
+        border.damage();
+    }
 }
 
 
@@ -373,6 +381,9 @@ pub fn unbound_resize(self: *Self, width: ?i32, height: ?i32) void {
     if (height) |new_height| self.height = new_height;
 
     if (self.swallowing_border) |*border| {
+        border.damage();
+    }
+    if (self.floating_border) |*border| {
         border.damage();
     }
 }
@@ -474,6 +485,15 @@ pub fn toggle_floating(self: *Self, flag: ?bool) void {
             self.unbound_move(geometry.x, geometry.y);
             self.unbound_resize(geometry.width, geometry.height);
         }
+
+        if (ctx.cfg.border.color.floating != null) {
+            self.floating_border = undefined;
+            self.floating_border.?.init(self) catch |err| {
+                self.floating_border = null;
+                log.err("<{*}> init custom decoration failed: {}", .{ self, err });
+                return;
+            };
+        }
     } else {
         self.floating_geometry = .{
             .x = self.x,
@@ -481,7 +501,13 @@ pub fn toggle_floating(self: *Self, flag: ?bool) void {
             .width = self.width,
             .height = self.height,
         };
+
+        if (self.floating_border) |*border| {
+            border.deinit();
+            self.floating_border = null;
+        }
     }
+
 }
 
 
@@ -495,6 +521,9 @@ pub fn toggle_maximize(self: *Self, flag: ?bool) void {
     self.append_event(.{ .maximize = self.maximize });
 
     if (self.swallowing_border) |*border| {
+        border.damage();
+    }
+    if (self.floating_border) |*border| {
         border.damage();
     }
 }
@@ -777,7 +806,7 @@ pub fn manage(self: *Self) void {
                 height = output.exclusive_height() - 2*ctx.cfg.border.width;
             }
         }
-        if (self.swallowing_border != null) {
+        if ((self.swallowing_border != null) or (self.floating_border != null)) {
             if (self.managed_by_layout()) {
                 width = @max(width - 2*ctx.cfg.border.width, self.min_width);
                 height = @max(height - 2*ctx.cfg.border.width, self.min_height);
@@ -819,6 +848,12 @@ pub fn render(self: *Self) void {
 
     if (self.swallowing_border) |*border| {
         border.render(ctx.cfg.border.color.swallowing);
+        if (self.managed_by_layout()) {
+            offset_x += ctx.cfg.border.width;
+            offset_y += ctx.cfg.border.width;
+        }
+    } else if (self.floating_border) |*border| {
+        border.render(ctx.cfg.border.color.floating.?);
         if (self.managed_by_layout()) {
             offset_x += ctx.cfg.border.width;
             offset_y += ctx.cfg.border.width;
@@ -968,6 +1003,12 @@ fn swallow(self: *Self, window: *Self) void {
         .output => {
             window.prepare_unfullscreen();
         }
+    }
+
+    //swallow takes precendence over floating
+    if (self.floating_border) |*border| {
+        border.deinit();
+        self.floating_border = null;
     }
 
     self.swallowing_border = undefined;
