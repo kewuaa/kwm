@@ -267,6 +267,18 @@ pub fn occupied_tags(self: *const Self) u32 {
 }
 
 
+pub fn urgent_tags(self: *const Self) u32 {
+    var mask: u32 = 0;
+    {
+        var it = ctx.windows.safeIterator(.forward);
+        while (it.next()) |window| {
+            if (window.output == self and window.urgent) mask |= window.tag;
+        }
+    }
+    return mask;
+}
+
+
 pub fn toggle_tag(self: *Self, mask: u32) void {
     if (self.tag ^ mask == 0) return;
 
@@ -379,6 +391,7 @@ fn rwm_output_listener(rwm_output: *river.OutputV1, event: river.OutputV1.Event,
     std.debug.assert(rwm_output == output.rwm_output);
 
     switch (event) {
+        .capture_sessions => {},
         .dimensions => |data| {
             log.debug("<{*}> new dimensions: (width: {}, height: {})", .{ output, data.width, data.height });
 

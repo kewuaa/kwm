@@ -34,7 +34,7 @@
     document are to be interpreted as described in IETF RFC 2119.
   </description>
 
-  <interface name="river_window_manager_v1" version="5">
+  <interface name="river_window_manager_v1" version="6">
     <description summary="window manager global interface">
       This global interface should only be advertised to the window manager
       process. Only one window management client may be active at a time. The
@@ -246,6 +246,10 @@
         The window manager may wish to restrict which key bindings are available
         while locked or otherwise use this information.
 
+        If the session is currently locked when the river_window_manager_v1
+        object is created, the session_locked event will be sent in the first
+        manage sequence.
+
         This event will be followed by a manage_start event after all other new
         state has been sent by the server.
       </description>
@@ -319,7 +323,7 @@
     </request>
   </interface>
 
-  <interface name="river_window_v1" version="5">
+  <interface name="river_window_v1" version="6">
     <description summary="a logical window">
       This represents a logical window. For example, a window may correspond to
       an xdg_toplevel or Xwayland window.
@@ -401,8 +405,8 @@
         to 0. A value of 0 indicates that the window has no preference for that
         value.
 
-        The min_width/min_height must be strictly less than or equal to the
-        max_width/max_height.
+        If the max_width/max_height is greater than 0, the min_width/min_height
+        must be strictly less than or equal to the max_width/max_height.
 
         This event will be followed by a manage_start event after all other new
         state has been sent by the server.
@@ -931,7 +935,8 @@
       <description summary="make the window fullscreen">
         Make the window fullscreen on the given output. If multiple windows are
         fullscreen on the same output at the same time only the "top" window in
-        rendering order shall be displayed.
+        rendering order shall be displayed. If the window is already fullscreen
+        on a different output, the window is switched to the new output.
 
         All river_shell_surface_v1 objects above the top fullscreen window in
         the rendering order will continue to be rendered.
@@ -1134,6 +1139,35 @@
         state has been sent by the server.
       </description>
       <arg name="count" type="uint" summary="count of screen capture sessions"/>
+    </event>
+
+    <event name="activation_requested" since="6">
+      <description summary="window requested activation">
+        This event informs the window manager that the window has requested
+        activation, for example through the xdg-activation-v1 protocol.
+
+        The seat argument indicates the seat of the input event whose serial
+        backs the activation token, or null if the token was not created with
+        an input event serial. A null seat therefore distinguishes
+        application-initiated self-promotion from activation flowing from a
+        user action.
+
+        The token argument is the activation token string. A window manager
+        that distributes tokens itself, for example when spawning clients, can
+        use it to recognize activations it initiated.
+
+        The window manager may focus the window using a river_seat_v1 request,
+        indicate urgency to the user in some other way, or ignore this event
+        entirely. The server keeps no urgency state: multiple activation
+        requests for a window between manage sequences may be coalesced into a
+        single event.
+
+        This event will be followed by a manage_start event after all other new
+        state has been sent by the server.
+      </description>
+      <arg name="seat" type="object" interface="river_seat_v1" allow-null="true"
+        summary="seat of the backing input event, if any"/>
+      <arg name="token" type="string" summary="activation token"/>
     </event>
   </interface>
 
@@ -1806,6 +1840,10 @@
 
         If the given position is outside the bounds of all outputs, the pointer
         will be warped to the closest point inside an output instead.
+
+        If an op_start_pointer request is made during the same manage sequence
+        as a pointer_warp request, the warp is applied first by the server
+        regardless of the relative ordering of the two requests.
 
         This request modifies window management state and may only be made as
         part of a manage sequence, see the river_window_manager_v1 description.

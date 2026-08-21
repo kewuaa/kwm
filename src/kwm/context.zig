@@ -536,6 +536,7 @@ pub fn quit(self: *Self, exit_session: bool) void {
 pub fn focus(self: *Self, window: *Window, lift: bool) void {
     log.debug("<{*}> focus window: {*}", .{ self, window });
 
+    window.urgent = false;
     self.set_current_output(window.output);
     if (lift) self.window_to_lift = window;
 
