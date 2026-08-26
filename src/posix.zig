@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 kewuaa
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 const builtin = @import("builtin");
 const std = @import("std");
 const mem = std.mem;

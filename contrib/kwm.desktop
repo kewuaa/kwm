@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: © 2026 kewuaa
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 [Desktop Entry]
 Name=kwm
 Comment=kewuaa's window manager for River Wayland compositor

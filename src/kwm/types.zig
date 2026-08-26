@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 kewuaa
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 const build_options = @import("build_options");
 const std = @import("std");
 

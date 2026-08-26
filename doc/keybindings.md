@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: © 2026 kewuaa
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 # KEYBINDINGS
 
 kwm supports separate keybindings for each mode. Modes can be customized in the
