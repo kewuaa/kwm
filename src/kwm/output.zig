@@ -142,6 +142,30 @@ pub fn sync_state(self: *Self, state: *const State) void {
 }
 
 
+const State = struct {
+    layout: Layout,
+
+    tag: u32 = 1,
+    main_tag: u32 = 1,
+    prev_tag: u32 = 1,
+    prev_main_tag: u32 = 1,
+    layout_tag: [32]Layout.Type,
+    prev_layout_tag: [32]Layout.Type,
+};
+pub fn get_state(self: *Self) State {
+    var state: State = undefined;
+    inline for (@typeInfo(State).@"struct".fields) |field_info| {
+        @field(state, field_info.name) = @field(self, field_info.name);
+    }
+    return state;
+}
+pub fn sync_state(self: *Self, state: *const State) void {
+    inline for (@typeInfo(State).@"struct".fields) |field_info| {
+        @field(self, field_info.name) = @field(state, field_info.name);
+    }
+}
+
+
 pub fn apply_rules(self: *Self) void {
     log.debug("<{*}> apply rules", .{ self });
 
