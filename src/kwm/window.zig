@@ -280,6 +280,16 @@ pub fn toggle_tag(self: *Self, mask: u32) void {
 }
 
 
+pub fn warp(self: *Self, output: *Output) void {
+    const original_output = self.output;
+    if (original_output) |o| {
+        self.x = o.exclusive_x() - output.exclusive_x() + self.x;
+        self.y = o.exclusive_y() - output.exclusive_y() + self.y;
+    }
+    self.set_output(output, false);
+}
+
+
 pub fn place(self: *Self, pos: types.PlacePosition) void {
     switch (pos) {
         .top => self.rwm_window_node.placeTop(),
@@ -797,10 +807,15 @@ pub fn render(self: *Self) void {
         self.hidden
         or self.output == null
         or self.geometry_undefined
-        or self.x - ctx.cfg.border.width >= self.output.?.width
-        or self.x + self.width + ctx.cfg.border.width <= 0
-        or self.y - ctx.cfg.border.width >= self.output.?.height
-        or self.y + self.height + ctx.cfg.border.width <= 0
+        or (
+            !self.floating
+            and (
+                self.x - ctx.cfg.border.width >= self.output.?.width
+                or self.x + self.width + ctx.cfg.border.width <= 0
+                or self.y - ctx.cfg.border.width >= self.output.?.height
+                or self.y + self.height + ctx.cfg.border.width <= 0
+            )
+        )
     ) {
         if (!self.hidden and !self.geometry_undefined)
             log.debug("<{*}> out of range, hide", .{ self });
@@ -845,11 +860,16 @@ pub fn render(self: *Self) void {
     var right = self.x + self.width + ctx.cfg.border.width;
     var top = self.y - ctx.cfg.border.width;
     var bottom = self.y + self.height + ctx.cfg.border.width;
+    // if the window managed by any layout
+    // ensure the window only be rendered in one output
     if (
-        left < 0
-        or top < 0
-        or right > self.output.?.width
-        or bottom > self.output.?.height
+        self.managed_by_layout()
+        and (
+            left < 0
+            or top < 0
+            or right > self.output.?.width
+            or bottom > self.output.?.height
+        )
     ) {
         left = @max(left, 0);
         right = @min(right, self.output.?.width);
@@ -1065,11 +1085,8 @@ fn rwm_window_listener(rwm_window: *river.WindowV1, event: river.WindowV1.Event,
                 window.geometry_undefined
                 or (!window.managed_by_layout() and window.fullscreen != .output and !window.maximize)
             ) {
-                if (window.output == null) {
+                if (!window.managed_by_layout()) {
                     window.unbound_resize(data.width, data.height);
-                } else {
-                    window.move(null, null);
-                    window.resize(data.width, data.height);
                 }
                 if (window.geometry_undefined) {
                     window.geometry_undefined = false;
