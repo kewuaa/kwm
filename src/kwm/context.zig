@@ -29,7 +29,8 @@ const ShellSurface = @import("shell_surface.zig");
 
 const TimerTask = struct {
     time: Io.Timestamp,
-    handler: *const fn(context: *Self) void,
+    handler: *const fn(data: *void) void,
+    data: *void,
 
     pub fn compare(context: void, task1: TimerTask, task2: TimerTask) math.Order {
         _ = context;
@@ -279,12 +280,24 @@ pub inline fn get() *Self {
 }
 
 
-pub fn run_later(self: *Self, delay: Io.Duration, handler: *const fn(*Self) void) void {
+pub fn run_later(
+    self: *Self,
+    delay: Io.Duration,
+    handler: *const fn(*void) void,
+    data: anytype
+) void {
     log.debug("run {*} {}ms later", .{ handler, delay.toMilliseconds() });
 
     const now = Io.Timestamp.now(self.io, .awake);
     const time = now.addDuration(delay);
-    self.timer_tasks.push(self.gpa, .{ .time = time, .handler = handler }) catch |err| {
+    self.timer_tasks.push(
+        self.gpa,
+        .{
+            .time = time,
+            .handler = handler,
+            .data = @ptrCast(data)
+        }
+    ) catch |err| {
         log.err("push failed: {}", .{ err });
         return;
     };
@@ -298,7 +311,7 @@ pub fn run_timer_tasks(self: *Self) void {
         const now = std.Io.Timestamp.now(self.io, .awake);
         if (now.toMilliseconds() >= task.time.toMilliseconds()) {
             log.debug("run {*}", .{ task.handler });
-            task.handler(self);
+            task.handler(task.data);
         } else break;
         _ = self.timer_tasks.pop();
     }
@@ -1369,12 +1382,13 @@ fn trigger_hotplug(self: *Self) void {
 
     if (!self.any_inputs_plugged) {
         self.any_inputs_plugged = true;
-        self.run_later(.fromMilliseconds(100), hotplug_inputs);
+        self.run_later(.fromMilliseconds(100), hotplug_inputs, self);
     }
 }
 
 
-fn hotplug_inputs(self: *Self) void {
+fn hotplug_inputs(data: *void) void {
+    const self: *Self = @alignCast(@ptrCast(data));
     if (self.any_inputs_plugged) {
         self.any_inputs_plugged = false;
 

@@ -45,7 +45,7 @@ pub fn cycle_list(
         }
     }
 
-    return @fieldParentPtr("link", next_node.?);
+    return @alignCast(@fieldParentPtr("link", next_node.?));
 }
 
 
