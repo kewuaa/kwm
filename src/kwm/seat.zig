@@ -3,6 +3,7 @@ const Self = @This();
 const build_options = @import("build_options");
 const std = @import("std");
 const fs = std.fs;
+const Io = std.Io;
 const fmt = std.fmt;
 const mem = std.mem;
 const log = std.log.scoped(.seat);
@@ -71,6 +72,7 @@ cursor_hidden: struct {
     flag: bool = false,
     new: bool = false,
 } = .{},
+last_activity_time: Io.Timestamp,
 unhandled_actions: std.ArrayList(binding.Action) = undefined,
 xkb_bindings: std.StringHashMap(std.ArrayList(*binding.XkbBinding)) = undefined,
 pointer_bindings: std.StringHashMap(std.ArrayList(*binding.PointerBinding)) = undefined,
@@ -93,6 +95,7 @@ pub fn create(rwm_seat: *river.SeatV1) !*Self {
         .unhandled_actions = try .initCapacity(ctx.gpa, 2),
         .xkb_bindings = .init(ctx.gpa),
         .pointer_bindings = .init(ctx.gpa),
+        .last_activity_time = Io.Timestamp.now(ctx.io, .awake),
     };
     seat.link.init();
 
@@ -102,6 +105,12 @@ pub fn create(rwm_seat: *river.SeatV1) !*Self {
     rwm_seat.setListener(*Self, rwm_seat_listener, seat);
     rwm_layer_shell_seat.setListener(*Self, rwm_layer_shell_seat_listener, seat);
     rwm_xkb_binding_seat.setListener(*Self, rwm_xkb_binding_seat_listener, seat);
+
+    if (ctx.cfg.hide_cursor) |options| {
+        if (options.timeout) |timeout| {
+            ctx.run_later(.fromMilliseconds(timeout), hide_cursor_timer_handle, seat);
+        }
+    }
 
     return seat;
 }
@@ -217,6 +226,12 @@ pub fn hide_cursor(self: *Self, flag: bool) void {
         };
 
         cursor_shape_device.setShape(0, .default);
+
+        if (ctx.cfg.hide_cursor) |option| {
+            if (option.timeout) |timeout| {
+                ctx.run_later(.fromMilliseconds(timeout), hide_cursor_timer_handle, self);
+            }
+        }
     }
 
     self.cursor_hidden = .{
@@ -1202,6 +1217,21 @@ fn to_river_modifiers(modifiers: config.Modifiers) river.SeatV1.Modifiers {
         @field(mods, field.name) = @field(modifiers, field.name);
     }
     return mods;
+}
+
+
+fn hide_cursor_timer_handle(data: *void) void {
+    const self: *Self = @alignCast(@ptrCast(data));
+    const now = Io.Timestamp.now(ctx.io, .awake);
+    const duration = self.last_activity_time.durationTo(now).toMilliseconds();
+    if (duration >= ctx.cfg.hide_cursor.?.timeout.?) {
+        self.hide_cursor(true);
+        // manually manage
+        ctx.rwm.manageDirty();
+    } else {
+        const timeout = ctx.cfg.hide_cursor.?.timeout.? - duration;
+        ctx.run_later(.fromMilliseconds(timeout), hide_cursor_timer_handle, self);
+    }
 }
 
 
