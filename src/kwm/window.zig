@@ -975,7 +975,7 @@ fn swallow(self: *Self, window: *Self) void {
         }
     }
 
-    self.swallowing_border = undefined;
+    self.swallowing_border = @as(CustomBorder, undefined);
     self.swallowing_border.?.init(self) catch |err| {
         self.swallowing_border = null;
         log.err("<{*}> init custom decoration failed: {}", .{ self, err });
