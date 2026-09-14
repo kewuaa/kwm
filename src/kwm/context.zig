@@ -370,8 +370,6 @@ pub fn reload_config(self: *Self) void {
 
     if (comptime build_options.bar_enabled) {
         if (mask.bar) {
-            self.stop_listening_status();
-
             var it = self.outputs.safeIterator(.forward);
             while (it.next()) |output| {
                 if (mask.bar) {
@@ -379,6 +377,9 @@ pub fn reload_config(self: *Self) void {
                 }
                 output.bar.damage(.all);
             }
+
+            // Restart the listener; Bar.show is not called on reload.
+            self.start_listening_status();
         }
     }
 }
@@ -414,16 +415,17 @@ pub fn start_listening_status(self: *Self) void {
 
 
 pub fn stop_listening_status(self: *Self) void {
-    if (self.cfg.bar.status) |area| {
-        switch (area.data) {
-            .text => {},
-            .stdin => self.bar_status_fd = null,
-            .fifo => if (self.bar_status_fd) |fd| {
-                log.debug("close fd {}", .{ fd });
-                posix.close(fd);
-                self.bar_status_fd = null;
-            }
+    // Use the open fd, not `cfg.bar.status`, to decide what to close. During a
+    // reload the config already describes the new status source, which may not
+    // be the one that is open.
+    if (self.bar_status_fd) |fd| {
+        // stdin belongs to another process, so only stop reading it. Any other fd
+        // is the fifo we opened, so we close it.
+        if (fd != posix.STDIN_FILENO) {
+            log.debug("close fd {}", .{ fd });
+            posix.close(fd);
         }
+        self.bar_status_fd = null;
     }
 }
 
