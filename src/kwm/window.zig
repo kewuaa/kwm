@@ -196,6 +196,11 @@ pub fn destroy(self: *Self) void {
     if (self.is_terminal) {
         ctx.unregister_terminal(self);
     }
+
+    // before self.link.remove() below, unswallow moves our links
+    if (self.swallowed_by) |swallower| {
+        swallower.unswallow();
+    }
     self.unswallow();
 
     if (comptime build_options.bar_enabled) {
