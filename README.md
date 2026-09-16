@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: © 2026 kewuaa
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 <div align="center">
     <img alt="kwm" src="./logo/kwm.svg" width="256">
 </div>

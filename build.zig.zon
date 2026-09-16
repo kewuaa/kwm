@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 kewuaa
+// SPDX-License-Identifier: 0BSD OR CC0-1.0
+
 .{
     // This is the default name used by packages depending on this one. For
     // example, when a user runs `zig fetch --save <url>`, this field is used
