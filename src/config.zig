@@ -79,6 +79,7 @@ pub const Config = struct {
         },
         key: []const struct {
             mode: ?[]const u8 = null,
+            layout: ?u32 = null,
             keysym: []const u8,
             modifiers: Modifiers,
             event: kwm.XkbBindingEvent,
