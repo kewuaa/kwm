@@ -350,12 +350,16 @@ pub fn create_bindings(self: *Self) void {
             ctx.gpa,
             binding.XkbBinding.create(
                 self,
-                keysym_from_name(key_binding.keysym) orelse {
-                    log.warn("ambiguous keysym name '{s}'", .{ key_binding.keysym });
+                keysym_from_name(key_binding.key) orelse {
+                    log.warn("ambiguous keysym name '{s}'", .{ key_binding.key });
                     continue;
                 },
-                to_river_modifiers(key_binding.modifiers),
-                key_binding.event,
+                to_river_modifiers(key_binding.mods),
+                .{
+                    .repeat = key_binding.repeat,
+                    .pressed = key_binding.press,
+                    .released = key_binding.release,
+                },
             ) catch |err| {
                 log.err("<{*}> create xkb binding failed: {}", .{ self, err });
                 continue;
@@ -366,18 +370,20 @@ pub fn create_bindings(self: *Self) void {
         };
 
         log.debug(
-            "<{*}> append key binding: (mode: {s}, keysym: {s}, modifiers: (shift: {}, ctrl: {}, mod1: {}, mod3: {}, mod4: {}, mod5: {}), event: {any})",
+            "<{*}> append key binding: (mode: {s}, key: {s}, mods: (shift: {}, ctrl: {}, mod1: {}, mod3: {}, mod4: {}, mod5: {}), press: {any}, release: {any}, repeat: {})",
             .{
                 self,
                 mode,
-                key_binding.keysym,
-                key_binding.modifiers.shift,
-                key_binding.modifiers.ctrl,
-                key_binding.modifiers.mod1,
-                key_binding.modifiers.mod3,
-                key_binding.modifiers.mod4,
-                key_binding.modifiers.mod5,
-                key_binding.event,
+                key_binding.key,
+                key_binding.mods.shift,
+                key_binding.mods.ctrl,
+                key_binding.mods.mod1,
+                key_binding.mods.mod3,
+                key_binding.mods.mod4,
+                key_binding.mods.mod5,
+                key_binding.press,
+                key_binding.release,
+                key_binding.repeat,
             },
         );
     }
@@ -397,8 +403,11 @@ pub fn create_bindings(self: *Self) void {
             binding.PointerBinding.create(
                 self,
                 @intFromEnum(pointer_binding.button),
-                to_river_modifiers(pointer_binding.modifiers),
-                pointer_binding.event,
+                to_river_modifiers(pointer_binding.mods),
+                .{
+                    .pressed = pointer_binding.press,
+                    .released = pointer_binding.release
+                },
             ) catch |err| {
                 log.err("<{*}> create pointer binding failed: {}", .{ self, err });
                 continue;
@@ -409,18 +418,19 @@ pub fn create_bindings(self: *Self) void {
         };
 
         log.debug(
-            "<{*}> append pointer binding: (mode: {s}, button: {s}, modifiers: (shift: {}, ctrl: {}, mod1: {}, mod3: {}, mod4: {}, mod5: {}), event: {any})",
+            "<{*}> append pointer binding: (mode: {s}, button: {s}, mods: (shift: {}, ctrl: {}, mod1: {}, mod3: {}, mod4: {}, mod5: {}), press: {any}, release: {any})",
             .{
                 self,
                 mode,
                 @tagName(pointer_binding.button),
-                pointer_binding.modifiers.shift,
-                pointer_binding.modifiers.ctrl,
-                pointer_binding.modifiers.mod1,
-                pointer_binding.modifiers.mod3,
-                pointer_binding.modifiers.mod4,
-                pointer_binding.modifiers.mod5,
-                pointer_binding.event,
+                pointer_binding.mods.shift,
+                pointer_binding.mods.ctrl,
+                pointer_binding.mods.mod1,
+                pointer_binding.mods.mod3,
+                pointer_binding.mods.mod4,
+                pointer_binding.mods.mod5,
+                pointer_binding.press,
+                pointer_binding.release,
             },
         );
     }
