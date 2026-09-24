@@ -909,7 +909,7 @@ fn rwm_seat_listener(rwm_seat: *river.SeatV1, event: river.SeatV1.Event, seat: *
                 .none => unreachable,
                 .move => |op_data| {
                     if (op_data.seat == seat) {
-                        window.move(
+                        window.unbound_move(
                             op_data.start_x+data.dx,
                             op_data.start_y+data.dy,
                         );
@@ -931,7 +931,7 @@ fn rwm_seat_listener(rwm_seat: *river.SeatV1, event: river.SeatV1.Event, seat: *
                                     .reverse => op_data.start_y + data.dy,
                                 }
                             else null;
-                        window.move(new_x, new_y);
+                        window.unbound_move(new_x, new_y);
 
                         const new_width =
                             if (op_data.direction.horizontal) |direction|
@@ -947,7 +947,7 @@ fn rwm_seat_listener(rwm_seat: *river.SeatV1, event: river.SeatV1.Event, seat: *
                                     .reverse => -data.dy,
                                 }
                             else null;
-                        window.resize(new_width, new_height);
+                        window.unbound_resize(new_width, new_height);
                     }
                 }
             }
@@ -960,6 +960,23 @@ fn rwm_seat_listener(rwm_seat: *river.SeatV1, event: river.SeatV1.Event, seat: *
                     .none => {},
                     .move => |data| {
                         if (data.seat == seat) {
+                            const pointer_x = seat.pointer_position.x;
+                            const pointer_y = seat.pointer_position.y;
+                            {
+                                var it = ctx.outputs.safeIterator(.forward);
+                                while (it.next()) |output| {
+                                    if (
+                                        pointer_x < output.x
+                                        or pointer_x >= output.x + output.width
+                                        or pointer_y < output.y
+                                        or pointer_y >= output.y + output.height
+                                    ) continue;
+                                    window.warp(output);
+                                    ctx.set_current_output(output);
+                                    break;
+                                }
+                            }
+
                             window.prepare_move(.stop);
                         }
                     },
