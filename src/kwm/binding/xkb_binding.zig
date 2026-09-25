@@ -49,7 +49,7 @@ pub fn create(
     };
 
     if (layout) |idx| {
-        xkb_binding.*.setLayoutOverride(idx);
+        xkb_binding.setLayoutOverride(idx);
     }
 
     rwm_xkb_binding.setListener(*Self, rwm_xkb_binding_listener, xkb_binding);
