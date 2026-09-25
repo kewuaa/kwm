@@ -48,8 +48,8 @@ pub fn create(
         .event = event
     };
 
-    if (layout != null) {
-        xkb_binding.*.setLayoutOverride(layout.?);
+    if (layout) |idx| {
+        xkb_binding.*.setLayoutOverride(idx);
     }
 
     rwm_xkb_binding.setListener(*Self, rwm_xkb_binding_listener, xkb_binding);
