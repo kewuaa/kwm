@@ -66,6 +66,7 @@ pub const Config = struct {
             focus: u32,
             unfocus: u32,
             swallowing: u32,
+            floating: ?u32 = null,
         }
     },
 

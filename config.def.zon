@@ -201,6 +201,7 @@
             .focus = 0xffc777ff,
             .unfocus = 0x828bb8ff,
             .swallowing = 0x0830e6ff,
+            .floating = 0xff30e6ff,
         },
     },
 
