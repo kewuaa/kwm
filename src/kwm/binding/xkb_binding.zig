@@ -30,6 +30,7 @@ event: Event,
 
 pub fn create(
     seat: *Seat,
+    layout: ?u32,
     keysym: u32,
     modifiers: river.SeatV1.Modifiers,
     event: Event,
@@ -46,6 +47,10 @@ pub fn create(
         .seat = seat,
         .event = event
     };
+
+    if (layout) |idx| {
+        xkb_binding.*.setLayoutOverride(idx);
+    }
 
     rwm_xkb_binding.setListener(*Self, rwm_xkb_binding_listener, xkb_binding);
 
@@ -73,6 +78,13 @@ pub inline fn disable(self: *Self) void {
     defer log.debug("<{*}> disabled", .{ self });
 
     self.rwm_xkb_binding.disable();
+}
+
+
+pub fn setLayoutOverride(self: *Self, layout: u32) void {
+    defer log.debug("<{*}> layout overriden to {}", .{ self, layout });
+
+    self.rwm_xkb_binding.setLayoutOverride(layout);
 }
 
 

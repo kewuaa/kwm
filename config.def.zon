@@ -280,6 +280,12 @@
         //          "default" is the default mode, if you not set `mode`, the binding will be seemed as "default" mode
         //          when the session locked, kwm will switch to "lock" mode
         //          you could define any other mode
+        //       layout:
+        //          xkb layout that should be used to translate key events for the purpose of triggering this key binding
+        //          irrespective of the currently active xkb layout
+        //          this field is a 0-indexed xkbcommon layout number for the keyboard that generated the key event
+        //          by default this field is null so the currently active xkb layout of the keyboard that generated the key
+        //          event will be used
         //       keysym: keysym string
         //       modifiers:
         //          a struct with fields: shift, ctrl, mod1, mod3, mod4, mod5, and all of these fields are `false` by default

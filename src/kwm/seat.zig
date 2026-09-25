@@ -350,6 +350,7 @@ pub fn create_bindings(self: *Self) void {
             ctx.gpa,
             binding.XkbBinding.create(
                 self,
+                key_binding.layout,
                 keysym_from_name(key_binding.keysym) orelse {
                     log.warn("ambiguous keysym name '{s}'", .{ key_binding.keysym });
                     continue;
