@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 kewuaa
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 KWM(1) "kwm" "kewuaa's window manager"
 
 # NAME

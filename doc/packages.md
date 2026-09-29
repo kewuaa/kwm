@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: © 2026 kewuaa
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 ## Arch Linux
 
 `kwm` is available in the [AUR](https://aur.archlinux.org/packages/kwm).

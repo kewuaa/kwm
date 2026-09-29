@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: © 2026 Yiyu Zhou <yiyu@yiyuzhou.io>
+# SPDX-License-Identifier: 0BSD OR CC0-1.0
+
+name: reuse
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    name: ${{ matrix.system }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: x86_64-linux
+            os: ubuntu-latest
+          - system: aarch64-linux
+            os: ubuntu-24.04-arm
+          - system: aarch64-darwin
+            os: macos-latest
+    steps:
+      - uses: actions/checkout@main
+      - uses: wimpysworld/nothing-but-nix@main
+      - uses: DeterminateSystems/nix-installer-action@main
+      - run: nix build .#reuse-lint --no-link

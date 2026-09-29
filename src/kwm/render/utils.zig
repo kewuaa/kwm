@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: © 2026 kewuaa
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 const std = @import("std");
 const mem = std.mem;
 const unicode = std.unicode;
