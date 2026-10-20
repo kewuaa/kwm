@@ -126,6 +126,8 @@ pub const Action = union(enum) {
     focus_master_return,
     switch_layout: struct { layout: layout.Type },
     switch_to_previous_layout,
+    cycle_layout_forward,
+    cycle_layout_backward,
     toggle_bar,
 
     modify_nmaster: struct { change: enum { increase, decrease } },

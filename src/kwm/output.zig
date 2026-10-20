@@ -337,6 +337,17 @@ pub fn switch_to_previous_layout(self: *Self) void {
     self.set_current_layout(self.prev_layout_tag[i]);
 }
 
+pub fn cycle_layout(self: *Self, forward: bool) void {
+    const i = @ctz(self.main_tag);
+    if (forward) {
+        log.debug("<{*}> tag {b} cycling forward through layout", .{ self, self.main_tag });
+        self.set_current_layout(self.layout_tag[i].next());
+    } else {
+        log.debug("<{*}> tag {b} cycling backward through layout", .{ self, self.main_tag });
+        self.set_current_layout(self.layout_tag[i].previous());
+    }
+}
+
 
 pub fn manage(self: *Self) void {
     switch (self.current_layout()) {
