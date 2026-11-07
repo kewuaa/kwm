@@ -102,7 +102,7 @@ pub fn rgba(color: u32) struct { r: u32, g: u32, b: u32, a: u32 } {
 // https://codeberg.org/dwl/dwl-patches/src/branch/main/patches/swallow/swallow.patch
 pub fn parent_pid(io: Io, pid: i32) i32 {
     var path_buf: [32]u8 = undefined;
-    const path = fmt.bufPrint(
+    const path = mem.print(
         &path_buf,
         "/proc/{}/stat",
         .{ @as(u32, @intCast(pid)) },

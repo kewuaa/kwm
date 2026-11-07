@@ -3,7 +3,6 @@ const Self = @This();
 const build_options = @import("build_options");
 const std = @import("std");
 const fs = std.fs;
-const fmt = std.fmt;
 const mem = std.mem;
 const log = std.log.scoped(.seat);
 
@@ -235,7 +234,7 @@ pub fn manage(self: *Self) void {
 
                 self.chorded.state = .enabled;
             } else {
-                self.mode = fmt.bufPrint(&self.mode_buffer, "{s}", .{ ctx.mode }) catch unreachable;
+                self.mode = mem.print(&self.mode_buffer, "{s}", .{ ctx.mode }) catch unreachable;
             }
         }
     }
@@ -355,7 +354,7 @@ pub fn create_bindings(self: *Self) void {
                     log.warn("ambiguous keysym name '{s}'", .{ key_binding.keysym });
                     continue;
                 },
-                to_river_modifiers(key_binding.modifiers),
+                key_binding.modifiers,
                 key_binding.event,
             ) catch |err| {
                 log.err("<{*}> create xkb binding failed: {}", .{ self, err });
@@ -398,7 +397,7 @@ pub fn create_bindings(self: *Self) void {
             binding.PointerBinding.create(
                 self,
                 @intFromEnum(pointer_binding.button),
-                to_river_modifiers(pointer_binding.modifiers),
+                pointer_binding.modifiers,
                 pointer_binding.event,
             ) catch |err| {
                 log.err("<{*}> create pointer binding failed: {}", .{ self, err });
@@ -597,7 +596,7 @@ fn handle_actions(self: *Self) void {
                 } else if (self.chorded.state == .disabled) {
                     ctx.switch_mode(data.mode);
                 } else {
-                    self.mode = fmt.bufPrint(&self.mode_buffer, "{s}", .{ data.mode }) catch unreachable;
+                    self.mode = mem.print(&self.mode_buffer, "{s}", .{ data.mode }) catch unreachable;
                 }
             },
             .focus_iter => |data| {
@@ -1134,19 +1133,10 @@ fn wl_pointer_listener(wl_pointer: *wl.Pointer, event: wl.Pointer.Event, seat: *
 }
 
 
-fn to_river_modifiers(modifiers: config.Modifiers) river.SeatV1.Modifiers {
-    var mods: river.SeatV1.Modifiers = .{};
-    inline for (@typeInfo(config.Modifiers).@"struct".fields) |field| {
-        @field(mods, field.name) = @field(modifiers, field.name);
-    }
-    return mods;
-}
-
-
 // https://codeberg.org/river/river-classic/src/commit/f0908e2d117ede7114fa85c65622b055c565c250/river/command/map.zig#L254
 fn keysym_from_name(name: []const u8) ?u32 {
-    const n = ctx.gpa.dupeZ(u8, name) catch |err| {
-        log.err("dupeZ failed while call keysym_from_name: {}", .{ err });
+    const n = ctx.gpa.dupeSentinel(u8, name, 0) catch |err| {
+        log.err("dupeSentinel failed while call keysym_from_name: {}", .{ err });
         return null;
     };
     defer ctx.gpa.free(n);
@@ -1157,11 +1147,11 @@ fn keysym_from_name(name: []const u8) ?u32 {
         return null;
     }
 
-    if (@intFromEnum(keysym) == Keysym.XF86Screensaver) {
+    if (keysym == Keysym.XF86Screensaver) {
         if (mem.eql(u8, name, "XF86Screensaver")) {
             //
         } else if (mem.eql(u8, name, "XF86ScreenSaver")) {
-            return Keysym.XF86ScreenSaver;
+            return @intFromEnum(Keysym.XF86ScreenSaver);
         } else {
             log.err("ambiguous keysym name '{s}'", .{ name });
             return null;

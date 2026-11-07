@@ -26,7 +26,7 @@ const ShellSurface = @import("shell_surface.zig");
 
 const ctx = Context.get();
 const color_pattern = mvzr.compile("\\^#([0-9a-zA-Z]{8}|!)").?;
-pub var status_buffer = [1]u8 { 0 } ** 256;
+pub var status_buffer: [256]u8 = @splat(0);
 
 font: render_.Font = undefined,
 
@@ -45,7 +45,7 @@ dynamic_component_damaged: bool = true,
 background_damaged: bool = true,
 hidden: bool,
 
-dynamic_splits_buffer: [@typeInfo(types.BarArea).@"enum".fields.len-2]i32 = undefined,
+dynamic_splits_buffer: [@typeInfo(types.BarArea).@"enum".field_names.len-2]i32 = undefined,
 static_splits: std.ArrayList(i32) = .empty,
 dynamic_splits: std.ArrayList(i32) = undefined,
 
@@ -536,7 +536,7 @@ fn render_dynamic_component(self: *Self) void {
 
                 var buf: [8]u8 = undefined;
                 const str =
-                    if (right-left == 2 or num > 0) fmt.bufPrint(&buf, "{}", .{ num }) catch break :blk tag
+                    if (right-left == 2 or num > 0) mem.print(&buf, "{}", .{ num }) catch break :blk tag
                     else tag[left+2..right];
 
                 const n = mem.replace(

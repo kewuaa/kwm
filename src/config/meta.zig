@@ -6,66 +6,31 @@ const Type = std.builtin.Type;
 const constants = @import("constants.zig");
 
 
-// turn packed struct to normal struct
-pub fn unpacked(comptime T: type) type {
-    const info = @typeInfo(T).@"struct";
-    const fields = info.fields;
-    var len: usize = 0;
-    var names: [fields.len][]const u8 = undefined;
-    var types: [fields.len]type = undefined;
-    var attrs: [fields.len]Type.StructField.Attributes = undefined;
-    for (fields) |field| {
-        if (field.name[0] == '_') continue;
-
-        names[len] = field.name;
-        types[len] = field.@"type";
-        attrs[len] = Type.StructField.Attributes {
-            .@"comptime" = field.is_comptime,
-            .@"align" = field.alignment,
-            .default_value_ptr = field.default_value_ptr,
-        };
-        len += 1;
-    }
-
-    return @Struct(
-        .auto,
-        null,
-        names[0..len],
-        types[0..len],
-        attrs[0..len]
-    );
-}
-
-
 pub fn add_default(comptime T: type, comptime object: T) type {
     switch (@typeInfo(T)) {
         .@"struct" => |info| {
-            const len = info.fields.len;
-            var names: [len][]const u8 = undefined;
+            const names = info.field_names;
+            const len = names.len;
             var types: [len]type = undefined;
-            var attrs: [len]Type.StructField.Attributes = undefined;
+            var attrs: [len]Type.Struct.FieldAttributes = undefined;
 
-            for (0.., info.fields) |i, field| {
-                const new_T = add_default(field.type, @field(object, field.name));
+            for (0.., info.field_names, info.field_types, info.field_attrs) |i, name, @"type", attr| {
+                const new_T = add_default(@"type", @field(object, name));
                 const default: new_T = switch (@typeInfo(new_T)) {
                     .@"struct" => .{},
                     .optional => |optional_info| switch (@typeInfo(optional_info.child)) {
-                        .@"struct" => if (@field(object, field.name)) |_| .{} else null,
-                        else => @field(object, field.name),
+                        .@"struct" => if (@field(object, name)) |_| .{} else null,
+                        else => @field(object, name),
                     },
-                    else => @field(object, field.name),
+                    else => @field(object, name),
                 };
 
-                names[i] = field.name;
                 types[i] = new_T;
-                attrs[i] = Type.StructField.Attributes {
-                    .@"comptime" = field.is_comptime,
-                    .@"align" = field.alignment,
-                    .default_value_ptr = @ptrCast(&default),
-                };
+                attrs[i] = attr;
+                attrs[i].default_value_ptr = @ptrCast(&default);
             }
 
-            return @Struct(info.layout, info.backing_integer, &names, &types, &attrs);
+            return @Struct(info.layout, info.backing_integer, names, &types, &attrs);
         },
         .optional => |info| return
             if (object) |obj| ?add_default(info.child, obj)
@@ -78,14 +43,13 @@ pub fn add_default(comptime T: type, comptime object: T) type {
 pub fn enum_struct(comptime E: type, comptime T: type) type {
     const info = @typeInfo(E).@"enum";
 
-    const len = info.fields.len;
-    var names: [len][]const u8 = undefined;
+    const names = info.field_names;
+    const len = names.len;
     var types: [len]type = undefined;
-    var attrs: [len]Type.StructField.Attributes = undefined;
-    for (0.., info.fields) |i, field| {
-        names[i] = field.name;
+    var attrs: [len]Type.Struct.FieldAttributes = undefined;
+    for (0..len) |i| {
         types[i] = T;
-        attrs[i] = Type.StructField.Attributes {
+        attrs[i] = Type.Struct.FieldAttributes {
             .@"comptime" = false,
             .@"align" = @alignOf(T),
             .default_value_ptr = switch (@typeInfo(T)) {
@@ -98,7 +62,7 @@ pub fn enum_struct(comptime E: type, comptime T: type) type {
         };
     }
 
-    const S = @Struct(.auto, null, &names, &types, &attrs);
+    const S = @Struct(.auto, null, names, &types, &attrs);
 
     const Getter = struct {
         pub const instance: @This() = .{};
@@ -115,10 +79,10 @@ pub fn enum_struct(comptime E: type, comptime T: type) type {
     return @Struct(
         .auto,
         null,
-        &(.{ "getter" } ++ names),
+        &(.{ "getter" } ++ names.*),
         &(.{ Getter } ++ types),
         &(.{
-            Type.StructField.Attributes {
+            Type.Struct.FieldAttributes {
                 .@"comptime" = false,
                 .@"align" = @alignOf(T),
                 .default_value_ptr = &Getter.instance
@@ -140,55 +104,54 @@ pub fn make_optional(comptime T: type) type {
 pub fn make_fields_optional(comptime T: type) type {
     const info = @typeInfo(T).@"struct";
 
-    const len = info.fields.len;
-    var names: [len][]const u8 = undefined;
+    const names = info.field_names;
+    const len = names.len;
     var types: [len]type = undefined;
-    var attrs: [len]Type.StructField.Attributes = undefined;
-    for (0.., info.fields) |i, field| {
-        const new_T = make_optional(field.type);
+    var attrs: [len]Type.Struct.FieldAttributes = undefined;
+    for (0.., info.field_types) |i, @"type"| {
+        const new_T = make_optional(@"type");
         const default_value: new_T = null;
-        names[i] = field.name;
         types[i] = new_T;
-        attrs[i] = Type.StructField.Attributes {
+        attrs[i] = Type.Struct.FieldAttributes {
             .@"comptime" = false,
             .@"align" = @alignOf(new_T),
             .default_value_ptr = &default_value,
         };
     }
 
-    return @Struct(.auto, null, &names, &types, &attrs);
+    return @Struct(.auto, null, names, &types, &attrs);
 }
 
 
 pub fn field_mask(comptime T: type) type {
     const info = @typeInfo(T).@"struct";
 
-    const len = info.fields.len;
-    var names: [len][]const u8 = undefined;
-    var attrs: [len]Type.StructField.Attributes = undefined;
-    for (0.., info.fields) |i, field| {
+    const names = info.field_names;
+    const len = names.len;
+    var attrs: [len]Type.Struct.FieldAttributes = undefined;
+    for (0..len) |i| {
         const default_value = false;
-        names[i] = field.name;
-        attrs[i] = Type.StructField.Attributes {
+        attrs[i] = Type.Struct.FieldAttributes {
             .@"comptime" = false,
             .@"align" = @alignOf(bool),
             .default_value_ptr = &default_value,
         };
     }
 
-    return @Struct(.auto, null, &names, &@splat(bool), &attrs);
+    return @Struct(.auto, null, names, &@splat(bool), &attrs);
 }
 
 
 pub fn override(base: anytype, new: anytype) @TypeOf(base) {
     const T = @TypeOf(base);
     var result: T = undefined;
-    inline for (@typeInfo(T).@"struct".fields) |field_info| {
-        const new_field = @field(new, field_info.name);
-        const base_field = @field(base, field_info.name);
-        @field(result, field_info.name) =
+    const info = @typeInfo(T).@"struct";
+    inline for (info.field_names, info.field_types) |name, @"type"| {
+        const new_field = @field(new, name);
+        const base_field = @field(base, name);
+        @field(result, name) =
             if (new_field == null) base_field
-            else switch (@typeInfo(field_info.type)) {
+            else switch (@typeInfo(@"type")) {
                 .@"struct" => override(base_field, new_field.?),
                 else => new_field.?,
             };
@@ -200,11 +163,11 @@ pub fn override(base: anytype, new: anytype) @TypeOf(base) {
 pub fn deep_equal(comptime T: type, a: *const T, b: *const T) bool {
     return switch (@typeInfo(T)) {
         .@"struct" => |info| blk: {
-            inline for (info.fields) |field| {
+            inline for (info.field_names, info.field_types) |name, @"type"| {
                 if (!deep_equal(
-                    field.type,
-                    @ptrCast(&@field(a, field.name)),
-                    @ptrCast(&@field(b, field.name)),
+                    @"type",
+                    @ptrCast(&@field(a, name)),
+                    @ptrCast(&@field(b, name)),
                 )) {
                     break :blk false;
                 }
@@ -243,12 +206,12 @@ pub fn deep_equal(comptime T: type, a: *const T, b: *const T) bool {
 
                 if (tag_a != tag_b) break :blk false;
 
-                inline for (info.fields) |field| {
-                    if (@field(T, field.name) == tag_a) {
+                inline for (info.field_names, info.field_types) |name, @"type"| {
+                    if (@field(T, name) == tag_a) {
                         break :blk deep_equal(
-                            field.type,
-                            &@field(a.*, field.name),
-                            &@field(b.*, field.name),
+                            @"type",
+                            &@field(a.*, name),
+                            &@field(b.*, name),
                         );
                     }
                 }
@@ -263,111 +226,5 @@ pub fn deep_equal(comptime T: type, a: *const T, b: *const T) bool {
         .int, .bool, .@"enum" => a.* == b.*,
         .void => true,
         else => unreachable,
-    };
-}
-
-
-pub fn zon_free(gpa: mem.Allocator, value: anytype, default: ?*const @TypeOf(value)) void {
-    const Value = @TypeOf(value);
-    const info = @typeInfo(Value);
-
-    switch (info) {
-        .bool, .int, .float, .@"enum" => {},
-        .pointer => |pointer| {
-            switch (pointer.size) {
-                .one => {
-                    if (default) |ptr| {
-                        if (value == ptr.*) return;
-                    }
-
-                    zon_free(gpa, value.*);
-                    gpa.destroy(value);
-                },
-                .slice => {
-                    if (default) |ptr| {
-                        if (value.ptr == ptr.ptr) return;
-                    }
-
-                    for (value) |item| {
-                        zon_free(gpa, item, null);
-                    }
-                    gpa.free(value);
-                },
-                .many, .c => comptime unreachable,
-            }
-        },
-        .array => for (0.., value) |i, item| {
-            zon_free(
-                gpa,
-                item,
-                if (default) |ptr| &ptr.*[i] else null
-            );
-        },
-        .@"struct" => |@"struct"| inline for (@"struct".fields) |field| {
-            zon_free(
-                gpa,
-                @field(value, field.name),
-                if (default) |ptr|
-                    @ptrCast(@alignCast(&@field(ptr.*, field.name)))
-                else
-                    if (field.default_value_ptr) |ptr| @ptrCast(@alignCast(ptr))
-                    else null
-            );
-        },
-        .@"union" => |@"union"| if (@"union".tag_type == null) {
-            if (comptime requiresAllocator(Value)) unreachable;
-        } else switch (value) {
-            inline else => |_, tag| {
-                zon_free(
-                    gpa,
-                    @field(value, @tagName(tag)),
-                    if (default) |ptr| (
-                        if (meta.activeTag(ptr.*) == tag)
-                            &@field(ptr.*, @tagName(tag))
-                        else null
-                    )
-                    else null
-                );
-            },
-        },
-        .optional => if (value) |some| {
-            zon_free(
-                gpa,
-                some,
-                if (default) |ptr| (
-                    if (ptr.* != null) &ptr.*.?
-                    else null
-                )
-                else null
-            );
-        },
-        .vector => |vector| for (0..vector.len) |i|
-            zon_free(
-                gpa,
-                value[i],
-                if (default) |ptr| &ptr.*[i] else null
-            ),
-        .void => {},
-        else => comptime unreachable,
-    }
-}
-
-fn requiresAllocator(T: type) bool {
-    return switch (@typeInfo(T)) {
-        .pointer => true,
-        .array => |array| return array.len > 0 and requiresAllocator(array.child),
-        .@"struct" => |@"struct"| inline for (@"struct".fields) |field| {
-            if (requiresAllocator(field.type)) {
-                break true;
-            }
-        } else false,
-        .@"union" => |@"union"| inline for (@"union".fields) |field| {
-            if (requiresAllocator(field.type)) {
-                break true;
-            }
-        } else false,
-        .optional => |optional| requiresAllocator(optional.child),
-        .vector => |vector| return vector.len > 0 and requiresAllocator(vector.child),
-        else => false,
     };
 }

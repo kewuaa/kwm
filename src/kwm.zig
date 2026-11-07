@@ -51,7 +51,7 @@ pub fn run(wl_display: *wl.Display) !void {
     const signal_fd = try posix.signalfd(-1, &mask, (1 << @bitOffsetOf(posix.O, "NONBLOCK")) | (1 << @bitOffsetOf(posix.O, "CLOEXEC")));
     defer posix.close(signal_fd);
 
-    const fd_type_num = @typeInfo(FDType).@"enum".fields.len;
+    const fd_type_num = @typeInfo(FDType).@"enum".field_names.len;
     var fd_buffer: [fd_type_num]posix.pollfd = undefined;
     var fd_type_buffer: [fd_type_num]FDType = undefined;
     var poll_fds: std.ArrayList(posix.pollfd) = .initBuffer(&fd_buffer);

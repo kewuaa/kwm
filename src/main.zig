@@ -2,7 +2,6 @@ const build_options = @import("build_options");
 const builtins = @import("builtin");
 const std = @import("std");
 const Io = std.Io;
-const fmt = std.fmt;
 const log = std.log;
 const mem = std.mem;
 const process = std.process;
@@ -16,7 +15,7 @@ const kwm = @import("kwm");
 const flags = @import("flags");
 const Config = @import("config");
 
-var runtime_log_level: std.log.Level = if (builtins.mode == .Debug) .debug else .info;
+var runtime_log_level: std.log.Level = if (builtins.mode == .debug) .debug else .info;
 const usage =
     \\usage: kwm [options]
     \\  -h,-help               Print this help message and exit.
@@ -90,9 +89,9 @@ pub fn main(init: process.Init) !void {
     var path_buffer: [256]u8 = undefined;
     const config_path = options.flags.c orelse options.flags.config orelse (
         if (init.environ_map.get("XDG_CONFIG_HOME")) |config_home|
-            fmt.bufPrint(&path_buffer, "{s}/kwm/config.zon", .{ config_home })
+            mem.print(&path_buffer, "{s}/kwm/config.zon", .{ config_home })
         else if (init.environ_map.get("HOME")) |home|
-            fmt.bufPrint(&path_buffer, "{s}/.config/kwm/config.zon", .{ home })
+            mem.print(&path_buffer, "{s}/.config/kwm/config.zon", .{ home })
         else return error.GetConfigHomeFailed
     ) catch |err| {
         log.err("format config path failed: {}", .{ err });

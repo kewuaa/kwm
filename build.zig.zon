@@ -25,7 +25,7 @@
     .fingerprint = 0xe8be0f07f64e684d, // Changing this has security and trust implications.
     // Tracks the earliest Zig version that the package considers to be a
     // supported use case.
-    .minimum_zig_version = "0.16.0",
+    .minimum_zig_version = "0.17.0",
     // This field is optional.
     // Each dependency must either provide a `url` and `hash`, or a `path`.
     // `zig build --fetch` can be used to fetch all dependencies of a package, recursively.
@@ -33,25 +33,26 @@
     // internet connectivity.
     .dependencies = .{
         .xkbcommon = .{
-            .url = "https://codeberg.org/ifreund/zig-xkbcommon/archive/v0.3.0.tar.gz",
-            .hash = "xkbcommon-0.3.0-VDqIe3K9AQB2fG5ZeRcMC9i7kfrp5m2rWgLrmdNn9azr",
+            .url = "https://codeberg.org/ifreund/zig-xkbcommon/archive/v0.4.0.tar.gz",
+            .hash = "xkbcommon-0.4.0-VDqIe0i2AgDRsok2GpMFYJ8SVhQS10_PI2M_CnHXsJJZ",
         },
         .wayland = .{
-            .url = "https://codeberg.org/ifreund/zig-wayland/archive/v0.6.0.tar.gz",
-            .hash = "wayland-0.6.0-lQa1kqz8AQADQmdNJsNhLoNHcnEGEUjrOaPV-dtEnEmX",
+            .url = "https://codeberg.org/ifreund/zig-wayland/archive/v0.7.0.tar.gz",
+            .hash = "wayland-0.7.0-lQa1kuP8AQD5dW7_o-VKLVD_QbqXe7Zob78r2su7Pyex",
         },
         .mvzr = .{
-            .url = "https://github.com/mnemnion/mvzr/archive/refs/tags/v0.3.10.tar.gz",
-            .hash = "mvzr-0.3.9-ZSOky8FzAQBQ9-GkQnaLjOZZHxrioD8NwY-QyZT6oAyR",
+            // https://github.com/mnemnion/mvzr/pull/16
+            .url = "git+https://github.com/LinuxUserGD/mvzr.git#15edeb80ae917f1d2a5b7d77e18447351b944e19",
+            .hash = "mvzr-0.3.9-ZSOky792AQAybniWhIzkWooUSAVIRBTUqbuZnMuBWnYU",
         },
         .fcft = .{
-            .url = "https://github.com/kewuaa/zig-fcft/archive/refs/tags/v2.0.0.tar.gz",
-            .hash = "fcft-2.0.0-zcx6C5EaAADIEaQzDg5D4UvFFMjSEwDE38vdE9xObeN9",
+            .url = "git+https://github.com/kewuaa/zig-fcft.git#926359b4dc70a60f2f68042631f6e086f3b8dcd1",
+            .hash = "fcft-3.0.0-zcx6CxQfAABhvjr94DLJpHKt0UEOpTBXVYQyeySRuaVv",
             .lazy = true,
         },
         .pixman = .{
-            .url = "https://codeberg.org/ifreund/zig-pixman/archive/v0.3.0.tar.gz",
-            .hash = "pixman-0.3.0-LClMnz2VAAAs7QSCGwLimV5VUYx0JFnX5xWU6HwtMuDX",
+            .url = "https://codeberg.org/ifreund/zig-pixman/archive/v0.4.0.tar.gz",
+            .hash = "pixman-0.4.0-LClMn_eWAAAa2zACATDpPwjuI5fWlO5cBp_F_M33hnNZ",
             .lazy = true,
         },
     },

@@ -69,9 +69,9 @@ pub fn create(
     output.* = .{
         .rwm_output = rwm_output,
         .rwm_layer_shell_output = rwm_layer_shell_output,
-        .layouts = .{ ctx.cfg.layout } ** 32,
-        .layout_tag = .{ ctx.cfg.default_layout } ** 32,
-        .prev_layout_tag = .{ ctx.cfg.default_layout } ** 32,
+        .layouts = @splat(ctx.cfg.layout),
+        .layout_tag = @splat(ctx.cfg.default_layout),
+        .prev_layout_tag = @splat(ctx.cfg.default_layout),
     };
     output.link.init();
 
@@ -128,16 +128,16 @@ pub fn destroy(self: *Self) void {
 
 pub fn get_state(self: *const Self) State {
     var state: State = undefined;
-    inline for (@typeInfo(State).@"struct".fields) |field| {
-        @field(state, field.name) = @field(self, field.name);
+    inline for (@typeInfo(State).@"struct".field_names) |name| {
+        @field(state, name) = @field(self, name);
     }
     return state;
 }
 
 
 pub fn sync_state(self: *Self, state: *const State) void {
-    inline for (@typeInfo(State).@"struct".fields) |field| {
-        @field(self, field.name) = @field(state, field.name);
+    inline for (@typeInfo(State).@"struct".field_names) |name| {
+        @field(self, name) = @field(state, name);
     }
 }
 
@@ -357,8 +357,8 @@ fn apply_rule(self: *Self, rule: *const config.OutputRule) void {
         l.* = config.meta.override(l.*, layout);
     };
     if (rule.default_layout) |default_layout| {
-        self.layout_tag = .{ default_layout } ** 32;
-        self.prev_layout_tag = .{ default_layout } ** 32;
+        self.layout_tag = @splat(default_layout);
+        self.prev_layout_tag = @splat(default_layout);
     }
 }
 
