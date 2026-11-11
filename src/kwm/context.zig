@@ -4,7 +4,6 @@ const build_options = @import("build_options");
 const builtin = @import("builtin");
 const std = @import("std");
 const Io = std.Io;
-const fmt = std.fmt;
 const mem = std.mem;
 const math = std.math;
 const heap = std.heap;
@@ -48,6 +47,7 @@ init_env: *const process.Environ,
 
 config_path: []const u8,
 cfg: config.Config = undefined,
+config_arena: heap.ArenaAllocator,
 
 wl_registry: *wl.Registry,
 wl_compositor: *wl.Compositor,
@@ -78,7 +78,7 @@ window_to_lift: ?*Window = null,
 windows: wl.list.Head(Window, .link) = undefined,
 focus_stack: wl.list.Head(Window, .flink) = undefined,
 
-key_repeat: ?KeyRepeat,
+key_repeat: ?KeyRepeat = @as(KeyRepeat, undefined),
 
 bar_status_fd: ?posix.fd_t = null,
 
@@ -133,6 +133,7 @@ pub fn init(
         .io = io,
         .init_env = init_env,
         .config_path = config_path,
+        .config_arena = .init(gpa),
         .wl_registry = wl_registry,
         .wl_compositor = wl_compositor,
         .wl_subcompositor = wl_subcompositor,
@@ -144,10 +145,9 @@ pub fn init(
         .rwm = rwm,
         .rwm_xkb_bindings = rwm_xkb_bindings,
         .rwm_layer_shell = rwm_layer_shell,
-        .key_repeat = undefined,
         .terminal_windows = .init(gpa),
         .output_states = .init(gpa),
-        .mode = fmt.bufPrint(&mode_buffer, "{s}", .{ config.default_mode }) catch return error.ModeNameTooLong,
+        .mode = mem.print(&mode_buffer, "{s}", .{ config.default_mode }) catch return error.ModeNameTooLong,
     };
 
     const wl_surface = try wl_compositor.createSurface();
@@ -270,7 +270,7 @@ pub fn deinit() void {
     ctx.kill_startup_process();
     ctx.startup_processes.deinit(ctx.gpa);
 
-    config.free(ctx.gpa, ctx.cfg);
+    ctx.config_arena.deinit();
 }
 
 
@@ -306,16 +306,20 @@ pub fn run_timer_tasks(self: *Self) void {
 
 
 pub fn reload_config(self: *Self) void {
-    log.debug("reloading config", .{});
+    log.info("reloading config", .{});
 
+    var arena = heap.ArenaAllocator.init(self.gpa);
     const mask = config.reload(
-        .{ .gpa = self.gpa, .io = self.io, .env = &self.env },
+        .{ .gpa = self.gpa, .arena = arena.allocator(), .io = self.io, .env = &self.env },
         &self.cfg,
         self.config_path
     ) catch |err| {
         log.err("reload configuration failed: {}", .{ err });
+        arena.deinit();
         return;
     };
+    self.config_arena.deinit();
+    self.config_arena = arena;
 
     log.debug("mask: {any}", .{ mask });
 
@@ -813,7 +817,7 @@ pub fn prepare_remove_seat(self: *Self, seat: *Seat) void {
 pub fn switch_mode(self: *Self, mode: []const u8) void {
     log.debug("switch mode from {s} to {s}", .{ self.mode, mode });
 
-    self.mode = fmt.bufPrint(&mode_buffer, "{s}", .{ mode }) catch @panic("mode name too lone");
+    self.mode = mem.print(&mode_buffer, "{s}", .{ mode }) catch @panic("mode name too lone");
 
     if (comptime build_options.bar_enabled) {
         var it = self.outputs.safeIterator(.forward);
@@ -905,7 +909,7 @@ pub inline fn set_current_seat(self: *Self, seat: ?*Seat) void {
 
 
 pub fn spawn_child(self: *Self, argv: []const []const u8) !process.Child {
-    if (comptime builtin.mode == .Debug) {
+    if (comptime builtin.mode == .debug) {
         const cmd = try mem.join(self.gpa, " ", argv);
         defer self.gpa.free(cmd);
         log.debug("spawn child process: {s}", .{ cmd });
@@ -933,7 +937,7 @@ pub fn spawn_child(self: *Self, argv: []const []const u8) !process.Child {
 pub fn spawn(self: *Self, argv: []const []const u8) void {
     if (argv.len == 0) return;
 
-    if (comptime builtin.mode == .Debug) {
+    if (comptime builtin.mode == .debug) {
         const cmd = mem.join(self.gpa, " ", argv) catch unreachable;
         defer self.gpa.free(cmd);
         log.debug("spawn: `{s}`", .{ cmd });
@@ -947,8 +951,8 @@ pub fn spawn(self: *Self, argv: []const []const u8) void {
         log.err("allocSentinel failed: {}", .{ err });
         return;
     };
-    for (0..argv.len) |i| argv_buffer[i] = arena.dupeZ(u8, argv[i]) catch |err| {
-        log.err("dupeZ failed: {}", .{ err });
+    for (0..argv.len) |i| argv_buffer[i] = arena.dupeSentinel(u8, argv[i], 0) catch |err| {
+        log.err("dupeSentinel failed: {}", .{ err });
         return;
     };
 
@@ -1030,7 +1034,7 @@ fn init_env_map(self: *Self) void {
         };
 
         var buffer: [8]u8 = undefined;
-        const xcursor_size = fmt.bufPrint(&buffer, "{}", .{ xcursor_theme.size }) catch |err| {
+        const xcursor_size = mem.print(&buffer, "{}", .{ xcursor_theme.size }) catch |err| {
             log.warn("bufPrint failed: {}", .{ err });
             break :blk;
         };
@@ -1042,7 +1046,7 @@ fn init_env_map(self: *Self) void {
 
 
 fn load_config(self: *Self) void {
-    log.debug("loading configuration", .{});
+    log.info("loading configuration", .{});
 
     var env: process.Environ.Map = self.init_env.createMap(self.gpa) catch |err| blk: {
         log.warn("create environ map failed: {}", .{ err });
@@ -1051,10 +1055,13 @@ fn load_config(self: *Self) void {
     defer env.deinit();
 
     self.cfg = config.load(
-        .{ .gpa = self.gpa, .io = self.io, .env = &env },
+        .{ .gpa = self.gpa, .arena = self.config_arena.allocator(), .io = self.io, .env = &env },
         self.config_path
     ) catch |err| blk: {
         log.err("load configuration failed: {}, fallback to default configuration", .{ err });
+        if (!self.config_arena.reset(.retain_capacity)) {
+            log.warn("reset config arena allocator failed", .{});
+        }
         break :blk config.default;
     };
 }
@@ -1354,7 +1361,7 @@ fn rwm_listener(rwm: *river.WindowManagerV1, event: river.WindowManagerV1.Event,
         .session_locked => {
             log.debug("session locked", .{});
 
-            _ = fmt.bufPrintZ(&cache.mode, "{s}", .{ context.mode }) catch unreachable;
+            _ = mem.printSentinel(&cache.mode, "{s}", .{ context.mode }, 0) catch unreachable;
             context.switch_mode(config.lock_mode);
         },
         .session_unlocked => {

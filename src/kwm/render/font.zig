@@ -123,12 +123,12 @@ pub fn render_str(
 
 fn load_font(font_name: []const u8, scale: u32) !*fcft.Font {
     const backup_font = "monospace:size=10";
-    const name = try ctx.gpa.dupeZ(u8, font_name);
+    const name = try ctx.gpa.dupeSentinel(u8, font_name, 0);
     defer ctx.gpa.free(name);
     var fonts = [_][*:0]const u8 { name.ptr, backup_font };
 
     var buffer: [12]u8 = undefined;
-    const attr = try fmt.bufPrintZ(&buffer, "dpi={}", .{ @divFloor(scale*96, 120) });
+    const attr = try fmt.bufPrintSentinel(&buffer, "dpi={}", .{ @divFloor(scale*96, 120) }, 0);
 
     return fcft.Font.fromName(&fonts, @ptrCast(attr)) catch |err| {
         log.err("load font `{s}` and backup font `{s}` with attr: {s} failed: {}", .{ font_name, backup_font, attr, err });

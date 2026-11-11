@@ -42,7 +42,7 @@ pub fn arrange(self: *const Self, output: *Output) !void {
             var it = ctx.focus_stack.safeIterator(.forward);
             while (it.next()) |window| {
                 const masters = windows.items[0..@intCast(self.nmaster)];
-                if (mem.containsAtLeastScalar(*Window, masters, 1, window)) continue;
+                if (mem.containsAtLeastScalar(*Window, masters, window, 1)) continue;
                 if (!window.is_visible_in(output) or window.floating) continue;
                 try windows.append(ctx.gpa, window);
             }

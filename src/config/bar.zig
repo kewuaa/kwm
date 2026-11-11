@@ -134,8 +134,8 @@ pub fn get_scheme(
 
 
 pub fn empty(self: *const Self) bool {
-    inline for (@typeInfo(kwm.BarArea).@"enum".fields) |field| {
-        if (@field(self, field.name) != null) return false;
+    inline for (@typeInfo(kwm.BarArea).@"enum".field_names) |name| {
+        if (@field(self, name) != null) return false;
     }
     return true;
 }

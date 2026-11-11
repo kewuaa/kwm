@@ -17,9 +17,6 @@ const constants = @import("config/constants.zig");
 const preprocess = @import("config/preprocess.zig");
 pub const meta = @import("config/meta.zig");
 
-// work around for zig issue: https://codeberg.org/ziglang/zig/issues/31570
-pub const Modifiers = meta.unpacked(river.SeatV1.Modifiers);
-
 pub const Config = struct {
     env: []const struct { []const u8, []const u8 },
 
@@ -81,13 +78,13 @@ pub const Config = struct {
             mode: ?[]const u8 = null,
             layout: ?u32 = null,
             keysym: []const u8,
-            modifiers: Modifiers,
+            modifiers: river.SeatV1.Modifiers,
             event: kwm.XkbBindingEvent,
         },
         pointer: []const struct {
             mode: ?[]const u8 = null,
             button: kwm.Button,
-            modifiers: Modifiers,
+            modifiers: river.SeatV1.Modifiers,
             event: kwm.PointerBindingEvent,
         }
     },
@@ -106,6 +103,7 @@ pub const OutputRule = rule.Output;
 pub fn load(
     ctx: struct {
         gpa: mem.Allocator,
+        arena: mem.Allocator,
         io: Io,
         env: *const process.Environ.Map,
     },
@@ -117,17 +115,19 @@ pub fn load(
     defer buffer.deinit(ctx.gpa);
 
     @setEvalBranchQuota(20000);
-    var diag: std.zon.parse.Diagnostics = .{};
-    defer diag.deinit(ctx.gpa);
-    const config = zon.parse.fromSliceAlloc(
+    var diag: zon.parse.Diagnostics = undefined;
+    const config = zon.parse.fromSlice(
         meta.add_default(Config, default),
-        ctx.gpa,
-        buffer.items[0..buffer.items.len-1:0],
-        &diag,
-        .{.ignore_unknown_fields = true},
+        .{
+            .gpa = ctx.arena,
+            .arena = ctx.arena,
+            .diagnostics = &diag,
+            .source = buffer.items[0..buffer.items.len-1:0],
+            .ignore_unknown_fields = true,
+        }
     ) catch |err| {
         if (err == error.ParseZon) {
-            log.err("parse configuration failed: {f}", .{ diag });
+            log.err("parse configuration failed: {f}", .{ diag.fmt(path) });
         }
         return err;
     };
@@ -138,6 +138,7 @@ pub fn load(
 pub fn reload(
     ctx: struct {
         gpa: mem.Allocator,
+        arena: mem.Allocator,
         io: Io,
         env: *const process.Environ.Map,
     },
@@ -146,39 +147,31 @@ pub fn reload(
 ) !meta.field_mask(Config) {
     log.debug("reload configuration from `{s}`", .{ path });
 
-    var new = try load(.{ .gpa = ctx.gpa, .io = ctx.io, .env = ctx.env }, path);
-    defer free(ctx.gpa, new);
+    var new = try load(
+        .{
+            .gpa = ctx.gpa,
+            .arena = ctx.arena,
+            .io = ctx.io,
+            .env = ctx.env
+        },
+        path
+    );
 
     var mask: meta.field_mask(Config) = .{};
 
     const struct_info = @typeInfo(Config).@"struct";
-    inline for (struct_info.fields) |field| {
+    inline for (struct_info.field_names) |name| {
         if (
             !meta.deep_equal(
-                @FieldType(Config, field.name),
-                &@field(old, field.name),
-                &@field(new, field.name),
+                @FieldType(Config, name),
+                &@field(old, name),
+                &@field(new, name),
             )
         ) {
-            mem.swap(
-                @FieldType(Config, field.name),
-                &@field(old, field.name),
-                &@field(new, field.name),
-            );
-            @field(mask, field.name) = true;
+            @field(mask, name) = true;
         }
     }
+    old.* = new;
 
     return mask;
-}
-
-
-pub fn free(gpa: mem.Allocator, config: Config) void {
-    log.debug("free configuration", .{});
-
-    meta.zon_free(
-        gpa,
-        @as(*const meta.add_default(Config, default), @ptrCast(&config)).*,
-        null
-    );
 }

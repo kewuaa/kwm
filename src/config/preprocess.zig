@@ -134,15 +134,15 @@ pub fn preprocess(
 
 fn match(env: *const process.Environ.Map, line: []const u8, target: *const Target) !bool {
     var found_condition = false;
-    inline for (@typeInfo(Target).@"struct".fields) |field_info| {
-        if (parse(line, field_info.name++"=")) |str| {
+    inline for (@typeInfo(Target).@"struct".field_names) |field_name| {
+        if (parse(line, field_name++"=")) |str| {
             found_condition = true;
 
             const pattern = mvzr.compile(str) orelse return error.CompileFailed;
 
-            log.debug(field_info.name++": try match {s} with {s}", .{ @field(target, field_info.name), str });
+            log.debug(field_name++": try match {s} with {s}", .{ @field(target, field_name), str });
 
-            if (!pattern.isMatch(@field(target, field_info.name))) return false;
+            if (!pattern.isMatch(@field(target, field_name))) return false;
         }
     }
     if (parse(line, "env_contains:")) |str| {
