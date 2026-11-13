@@ -56,7 +56,7 @@ See the default [configuration](./config.def.zon) file for detailed features.
 
 ## Build
 
-Requires zig 0.16.x.
+Requires zig 0.17.x.
 
 ```
 zig build -Doptimize=ReleaseSafe
