@@ -104,7 +104,7 @@ is_terminal: bool = false,
 swallowing: ?*Self = null,
 swallowed_by: ?*Self = null,
 disable_swallow: bool = false,
-swallowing_border: ?CustomBorder = null,
+custom_border: ?CustomBorder = null,
 
 x: i32 = 0,
 y: i32 = 0,
@@ -202,6 +202,12 @@ pub fn destroy(self: *Self) void {
         swallower.unswallow();
     }
     self.unswallow();
+
+    // deinit custom border
+    if (self.custom_border) |*border| {
+        border.deinit();
+        self.custom_border = null;
+    }
 
     if (comptime build_options.bar_enabled) {
         if (self.output) |output| output.bar.damage(.tags);
@@ -362,7 +368,7 @@ pub fn resize(self: *Self, width: ?i32, height: ?i32) void {
         )
     );
 
-    if (self.swallowing_border) |*border| {
+    if (self.custom_border) |*border| {
         border.damage();
     }
 }
@@ -377,7 +383,7 @@ pub fn unbound_resize(self: *Self, width: ?i32, height: ?i32) void {
     if (width) |new_width| self.width = new_width;
     if (height) |new_height| self.height = new_height;
 
-    if (self.swallowing_border) |*border| {
+    if (self.custom_border) |*border| {
         border.damage();
     }
 }
@@ -487,6 +493,7 @@ pub fn toggle_floating(self: *Self, flag: ?bool) void {
             .height = self.height,
         };
     }
+
 }
 
 
@@ -499,7 +506,7 @@ pub fn toggle_maximize(self: *Self, flag: ?bool) void {
 
     self.append_event(.{ .maximize = self.maximize });
 
-    if (self.swallowing_border) |*border| {
+    if (self.custom_border) |*border| {
         border.damage();
     }
 }
@@ -767,6 +774,22 @@ pub fn apply_rules(self: *Self) void {
 pub fn manage(self: *Self) void {
     log.debug("<{*}> managing, propose dimensions: (width: {}, height: {})", .{ self, self.width, self.height });
 
+    // if swallowing or floating, draw the custom border
+    // else deinit the custom border
+    if (self.swallowing != null or (self.floating and ctx.cfg.border.color.floating != null)) {
+        if (self.custom_border == null) {
+            self.custom_border = @as(CustomBorder, undefined);
+            self.custom_border.?.init(self) catch |err| {
+                self.custom_border = null;
+                log.err("<{*}> init custom decoration failed: {}", .{ self, err });
+                return;
+            };
+        }
+    } else if (self.custom_border) |*border| {
+        border.deinit();
+        self.custom_border = null;
+    }
+
     if (self.geometry_undefined) {
         self.rwm_window.proposeDimensions(0, 0);
         return;
@@ -782,7 +805,7 @@ pub fn manage(self: *Self) void {
                 height = output.exclusive_height() - 2*ctx.cfg.border.width;
             }
         }
-        if (self.swallowing_border != null) {
+        if (self.custom_border != null) {
             if (self.managed_by_layout()) {
                 width = @max(width - 2*ctx.cfg.border.width, self.min_width);
                 height = @max(height - 2*ctx.cfg.border.width, self.min_height);
@@ -822,8 +845,11 @@ pub fn render(self: *Self) void {
     const output_x = self.output.?.exclusive_x();
     const output_y = self.output.?.exclusive_y();
 
-    if (self.swallowing_border) |*border| {
-        border.render(ctx.cfg.border.color.swallowing);
+    if (self.custom_border) |*border| {
+        border.render(
+            if (self.swallowing != null) ctx.cfg.border.color.swallowing
+            else ctx.cfg.border.color.floating.?
+        );
         if (self.managed_by_layout()) {
             offset_x += ctx.cfg.border.width;
             offset_y += ctx.cfg.border.width;
@@ -974,13 +1000,6 @@ fn swallow(self: *Self, window: *Self) void {
             window.prepare_unfullscreen();
         }
     }
-
-    self.swallowing_border = @as(CustomBorder, undefined);
-    self.swallowing_border.?.init(self) catch |err| {
-        self.swallowing_border = null;
-        log.err("<{*}> init custom decoration failed: {}", .{ self, err });
-        return;
-    };
 }
 
 
@@ -998,11 +1017,6 @@ fn unswallow(self: *Self) void {
         self.link.insert(&window.link);
         window.flink.remove();
         self.flink.insert(&window.flink);
-    }
-
-    if (self.swallowing_border) |*border| {
-        border.deinit();
-        self.swallowing_border = null;
     }
 }
 
